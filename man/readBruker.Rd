@@ -15,7 +15,7 @@ readBruker(folder = NULL, dimension = NULL)
 An (invisible) object containing spectral data
 }
 \description{
-This function reads Bruker NMR data.
+This function reads Bruker NMR data. 1D and 2D data are supported.
 }
 \examples{
 exampleData<-readBruker(folder=system.file("extdata/1/10/pdata/10",package="mrbin"),
