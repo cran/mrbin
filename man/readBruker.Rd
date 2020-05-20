@@ -4,12 +4,14 @@
 \alias{readBruker}
 \title{A function for reading Bruker NMR spectra.}
 \usage{
-readBruker(folder = NULL, dimension = NULL)
+readBruker(folder = NULL, dimension = NULL, onlyTitles = FALSE)
 }
 \arguments{
 \item{folder}{Defines the exact NMR data folder. If NULL, mrbin parameter set is used}
 
 \item{dimension}{Defines the data dimension, "1D" or "2D". Only used if "folder" is not NULL}
+
+\item{onlyTitles}{Read only spectrum titles, but no data. Defaults to FALSE}
 }
 \value{
 An (invisible) object containing spectral data

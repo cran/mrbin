@@ -1,5 +1,14 @@
 # mrbin News
 
+## Version 1.4.1
+
+* Vignette was expanded
+* Bin borders are now rounded to avoid floating point inconsistencies
+* PQN normalization now also ignores glucose signals in 1D spectra. This behavior can be turned off now as well.
+* Some minor and major fixes to increase user friendliness
+* Some minor and major bug fixes to increase stability, especially when analyzing single samples and/or single bins
+
+
 ## Version 1.4.0
 
 * Solvent region change: Only bins that are completely within the solvent region are removed

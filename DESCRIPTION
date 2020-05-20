@@ -1,6 +1,6 @@
 Package: mrbin
 Title: Magnetic Resonance Binning, Integration and Normalization
-Version: 1.4.0
+Version: 1.4.1
 Authors@R: 
     person(given = "Matthias",
            family = "Klein",
@@ -20,11 +20,11 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.0.2.9000
-Suggests: knitr, rmarkdown
-VignetteBuilder: knitr
+Suggests:
+VignetteBuilder: utils
 NeedsCompilation: no
-Packaged: 2020-04-29 04:10:59 UTC; klein.663
+Packaged: 2020-05-20 04:54:10 UTC; klein.663
 Author: Matthias Klein [aut, cre] (<https://orcid.org/0000-0001-7455-5381>)
 Maintainer: Matthias Klein <klein.663@osu.edu>
 Repository: CRAN
-Date/Publication: 2020-04-29 05:40:03 UTC
+Date/Publication: 2020-05-20 05:20:02 UTC

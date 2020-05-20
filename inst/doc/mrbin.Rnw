@@ -18,6 +18,7 @@
 
 \title{mrbin - Magnetic Resonance Binning, Integration and Normalization}
 \author{Matthias S. Klein}
+\date{Version 1.4.1}
 \maketitle
 %\tableofcontents
 %\pagebreak
@@ -224,12 +225,48 @@ was specified):
 
 \begin{verbatim}
 binData<-read.csv("C:/Users/User/Documents/mrbin_bins.csv",
-                  check.names = FALSE)
+                  check.names = FALSE, row.names=1)
 \end{verbatim}
 
 Column names include left and right borders or each bin separated by commas. For
 2D data, column names include left, right, top, and bottom border of each bin.\\
+\pagebreak
 
+\subsubsection{Example: Lipid Data Analysis}
+
+Analyzing lipid NMR signals can be accomplished using custom bin lists rather
+than a regular grid of bins. This can be done as in the following code:\\
+
+<<>>=
+results <- mrbin(silent=TRUE,parameters=list(binMethod="Custom bin list",
+ dimension="1D",specialBinList=matrix(c(
+                               5.45,5.2,0,160,
+                               2.9,2.74,0,160,
+                               2.14,1.93,0,160,
+                               1.41,1.2,0,160,
+                               0.94,0.8,0,160,
+                               2.44,2.2,0,160,
+                               4.325,4.26,0,160
+                               ),ncol=4,byrow=TRUE,dimnames=list(c(
+                               "-CH=CH- Methene",
+                               "=CH-CH2-CH= Diallylic",
+                               "-CH2-CH=CH- Allylic",
+                               "-CH2- Methylene",
+                               "-CH3 Methyl",
+                               "COO-CH2-CH2- Methylene_to_carboxyl",
+                               "Glycerol"
+                               ),NULL)),
+ referenceScaling="Yes",reference1D=c(0.03,-0.03),removeSolvent="No",
+ removeAreas="No",sumBins="No",trimZeros="Yes",noiseRemoval="No",
+ PQNScaling="No",fixNegatives="Yes",logTrafo="No",defineGroups="No",PCA="Yes",
+ createBins="Yes",useAsNames="Folder names",saveFiles="No",verbose=TRUE,
+ NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
+              system.file("extdata/2/10/pdata/10",package="mrbin"),
+              system.file("extdata/3/10/pdata/10",package="mrbin"))
+ ))
+@
+
+The lipid signal areas used in this example are based on Klein et al, 2011.\\
 
 \subsection{mrbin Workflow}
 
@@ -277,7 +314,8 @@ To use own (user provided) data:\\
 atnv(NMRdataMatrix,noiseLevelVector)
 \end{verbatim}
 
-To use current mrbin data from the internal memory, use atnv()) without parameters. This requires data loaded
+To use current mrbin data from the internal memory, use atnv()) without
+parameters. This requires data loaded
 using mrbin(). This is usually not necessary as it is included in the mrbin work
 flow.\\
 
@@ -336,7 +374,7 @@ down() #Move spectrum down
 
 \subsection{Pop-Up Windows}
 mrbin is set up to ask for user input through pop-up windows. This requires
-graphics support, otherwise the use input will be asked through command line
+graphics support, otherwise the user input will be asked through command line
 menus, which is less user friendly but still offers the full functionality.\\
 
 \subsection{Apple/Mac Computers And RStudio}
@@ -347,6 +385,12 @@ the newest version of xquartz from https://www.xquartz.org.\\
 \section{License}
 
 This project is licensed under GPL-3.0.\\
+
+\section{References}
+
+\textbf{Klein MS}, Dorn C, Saugspier M, Hellerbrand C, Oefner PJ \& Gronwald W
+(2011): Discrimination of Steatosis and NASH in Mice Using Nuclear Magnetic
+Resonance Spectroscopy. \textit{Metabolomics} 7:237-246\\
 
 \end{document}
 
