@@ -1,5 +1,14 @@
 # mrbin News
 
+## Version 1.4.2
+
+* Summed bins are now calculated with the exact defined borders. Surrounding bins are truncated
+* Noise levels are now calculated separately for each bin in each spectrum, correcting for differences in data points per bin
+* PCA plot labels now show percentage of variance instead of percentage of standard deviation
+* Some minor and major fixes to increase user friendliness
+* Some minor and major bug fixes to increase stability, especially when analyzing single samples and/or single bins
+
+
 ## Version 1.4.1
 
 * Vignette was expanded

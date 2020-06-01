@@ -266,7 +266,9 @@ results <- mrbin(silent=TRUE,parameters=list(binMethod="Custom bin list",
  ))
 @
 
-The lipid signal areas used in this example are based on Klein et al, 2011.\\
+When using custom bin lists, each spectral data point may be part of multiple
+bins. For rectangular bin lists, each data point can only be counted once. The
+lipid signal areas used in this example are based on Klein et al, 2011.\\
 
 \subsection{mrbin Workflow}
 
