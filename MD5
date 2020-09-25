@@ -1,12 +1,12 @@
-bb37071ea5d147b40611c838bdfbbc24 *DESCRIPTION
+455c9cd6973a1f0b26c47fa4f650f23a *DESCRIPTION
 a9359f9de8b7100a97a86073ce7085c7 *NAMESPACE
-fc1165c66d554a5b35d110669448590f *NEWS.md
-486ce833d6b4862c84457767d0b7d793 *R/mrbin.R
+7b6c4754208f4f9982a8ee83145d3779 *NEWS.md
+fccdaad3a6dbd212f071634178bf9eac *R/mrbin.R
 b74c162289b4646db96b2cb41e12ce80 *README.md
 03926f300ad692c7ebb7b51c977d67e6 *build/vignette.rds
 b8d7163d7ae6ff086a018ff59407de99 *inst/doc/mrbin.R
-ab13c3e254acbe43d27fa4702f9a7918 *inst/doc/mrbin.Rnw
-c75c97c53a4317802e64a38ee052d6aa *inst/doc/mrbin.pdf
+dc881d20bff9863433ff89358ea77af0 *inst/doc/mrbin.Rnw
+6ca8dbc96f1b53d4afe32fb70e8ed0ca *inst/doc/mrbin.pdf
 7b02c0e5793e4043060634d0ae0a151d *inst/extdata/1/10/pdata/10/1r
 0a67540dea70f95671702dc84c0d4896 *inst/extdata/1/10/pdata/10/proc
 b3c867d628a161ddac3ad3093d8a6dd6 *inst/extdata/1/10/pdata/10/procs
@@ -65,4 +65,4 @@ b7d2275671084e329be270f1f1976396 *man/setParam.Rd
 0df33e0e5841513bd3a22a895a7c0317 *man/zoom.Rd
 02aa28c02bd50c556923f5f34f50b7b2 *man/zoomIn.Rd
 0e6257810c698187fa58a3d91ef92bc5 *man/zoomOut.Rd
-ab13c3e254acbe43d27fa4702f9a7918 *vignettes/mrbin.Rnw
+dc881d20bff9863433ff89358ea77af0 *vignettes/mrbin.Rnw
