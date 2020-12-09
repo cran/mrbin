@@ -1,5 +1,11 @@
 # mrbin News
 
+## Version 1.4.4
+
+* Function PQNScaling now works with externally provided data
+* Minor improvements for user friendliness
+
+
 ## Version 1.4.3
 
 * Noise levels per bin are no longer saved in the .txt file to keep this file clear and tidy. Instead, raw noise levels and median noise levels (adjusted for bin size) are now saved in the output .txt file

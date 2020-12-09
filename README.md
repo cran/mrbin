@@ -203,7 +203,7 @@ the newest version of xquartz from https://www.xquartz.org.
 
 ## Authors
 
-* **Matthias S. Klein** - [KleinOmicsLab](https://github.com/kleinomicslab)
+* **Matthias S. Klein** - [KleinOmicsLab](https://github.com/kleinomicslab/)
 
 
 ## License

@@ -126,7 +126,7 @@ resetEnv<-function(){
     assign("bins",NULL,mrbin.env)
     assign("paramChangeFlag",FALSE,mrbin.env)
     assign("mrbinTMP",list(
-               mrbinversion="1.4.3",
+               mrbinversion=as.character(utils::packageVersion("mrbin")),
                binsRaw=NULL,
                medians=NULL,
                noise_level_TMP=NULL,
@@ -2133,6 +2133,12 @@ printParameters<-function(){
                 appendLF = FALSE)
       }
       message("\n##################################################\n\nTo recreate this data set, use the code above this line.\n", appendLF = FALSE)
+      if(mrbin.env$mrbinparam$saveFiles=="Yes"){
+        message("To load the saved data set, use the following code:\n\n", appendLF = FALSE)
+        message(" data<-read.csv(\n  \"",mrbin.env$mrbinparam$outputFileName,
+                "bins.csv\",\n", appendLF = FALSE)
+        message("  check.names = FALSE,row.names=1)\n\n", appendLF = FALSE)
+      }
       utils::flush.console()
   }
 }
@@ -3411,9 +3417,16 @@ if(nrow(mrbin.env$mrbinTMP$binRegions)>1){
 #'
 #' This function performs PQN scaling. To further exclude unreliable noise, only
 #' the most intense signals are used. For 1H and 1H-13C HSQC spectra, most of
-#' the sugar regions are excluded to avoid a dominating effect of the multiple
-#' sugar signals.
-#' @return {None}
+#' the sugar regions can be excluded to avoid a dominating effect of the
+#' multiple glucose signals.
+#' @param NMRdata A matrix containing NMR data. Columns=frequencies,rows=samples
+#' @param ignoreGlucose A character value ("Yes" or "No")
+#' @param dimension A character value ("1D" or "2D")
+#' @param ppmNames A character value ("borders" or "mean")
+#' @param sugarArea A numeric vector defining the the borders of glucose area
+#' @param minimumFeatures A numeric value defining minimum feature number used
+#' @param showHist A logical value, default is FALSE
+#' @return NMRdata An invisible matrix containing scaled NMR data.
 #' @export
 #' @examples
 #' mrbinExample<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
@@ -3423,44 +3436,87 @@ if(nrow(mrbin.env$mrbinTMP$binRegions)>1){
 #'                                 system.file("extdata/3/10/pdata/10",package="mrbin"))))
 #' PQNScaling()
 
-PQNScaling<-function(){#Scale to PQN
-if(nrow(mrbin.env$mrbinTMP$binRegions)>1){
-  if(nrow(mrbin.env$bins)>1){
-    #Create synthetic median spectrum by averaging all spectra
-    NMRdataTmp<-rbind(mrbin.env$bins,apply(mrbin.env$bins,2,mean))
-    rownames(NMRdataTmp)[nrow(NMRdataTmp)]<-"Median"
-    medianSample<-nrow(NMRdataTmp)
-    #Remove most sugar signals to get a better fold change estimate
-    if(mrbin.env$mrbinparam$PQNIgnoreSugarArea=="Yes") {
-      if(mrbin.env$mrbinparam$dimension == "2D" ) {
+PQNScaling<-function(NMRdata=NULL,ignoreGlucose="Yes",dimension="1D",
+                     ppmNames="borders",sugarArea=c(5.4,3.35,72,100),
+                     minimumFeatures=40,showHist=FALSE){
+  dataProvidedtoFunction<-TRUE
+  if(is.null(NMRdata)){
+    dataProvidedtoFunction<-FALSE
+    NMRdata<-mrbin.env$bins
+    ignoreGlucose<-mrbin.env$mrbinparam$PQNIgnoreSugarArea
+    dimension<-mrbin.env$mrbinparam$dimension
+    ppmNames<-"borders"
+    sugarArea<-mrbin.env$mrbinparam$PQNsugarArea
+    minimumFeatures<-mrbin.env$mrbinparam$PQNminimumFeatures
+    showHist<-mrbin.env$mrbinparam$PQNshowHist
+  } else {
+    NMRdata<-as.matrix(NMRdata)
+  }
+  if(ncol(NMRdata)>1){
+    if(nrow(NMRdata)>1){
+      #Create synthetic median spectrum by averaging all spectra
+      NMRdataTmp<-rbind(NMRdata,apply(NMRdata,2,mean))
+      rownames(NMRdataTmp)[nrow(NMRdataTmp)]<-"Median"
+      medianSample<-nrow(NMRdataTmp)
+      #Remove most sugar signals to get a better fold change estimate
+      if(ignoreGlucose=="Yes") {
+        if(dimension == "2D" ) {
           selectedCols<-NULL
+          if(ppmNames=="borders"){
+            if(dataProvidedtoFunction){
+              colnamesTMP<-matrix(as.numeric(unlist(strsplit(colnames(
+                         NMRdataTmp),","))),ncol=4,byrow=TRUE)
+              coordTmpAll<-cbind(apply(colnamesTMP[,3:4],1,mean),
+                  apply(colnamesTMP[,1:2],1,mean))
+
+            } else {
+              coordTmpAll<-cbind(apply(mrbin.env$mrbinTMP$binRegions[,3:4],1,mean),
+                  apply(mrbin.env$mrbinTMP$binRegions[,1:2],1,mean))
+            }
+          }
+          if(ppmNames=="mean"){
+              colnamesTMP<-matrix(as.numeric(unlist(strsplit(colnames(
+                            NMRdataTmp),","))),ncol=2,byrow=TRUE)
+              coordTmpAll<-colnamesTMP
+          }
           for(j in 1:ncol(NMRdataTmp)){
-              coordTmp<-cbind(apply(mrbin.env$mrbinTMP$binRegions[,3:4],1,mean),apply(mrbin.env$mrbinTMP$binRegions[,1:2],1,mean))[j,]#1=C,2=H
-                     if(!(coordTmp[2]>mrbin.env$mrbinparam$PQNsugarArea[2]&coordTmp[2]<mrbin.env$mrbinparam$PQNsugarArea[1]&
-                          coordTmp[1]>mrbin.env$mrbinparam$PQNsugarArea[3]&coordTmp[1]<mrbin.env$mrbinparam$PQNsugarArea[4])){
-                              selectedCols<-c(selectedCols,j)
-                     }
+            coordTmp<-coordTmpAll[j,]#1=C,2=H
+            if(!(coordTmp[2]>sugarArea[2]&coordTmp[2]<sugarArea[1]&
+              coordTmp[1]>sugarArea[3]&coordTmp[1]<sugarArea[4])){
+                selectedCols<-c(selectedCols,j)
+            }
           }
           NMRdataTmp2<-NMRdataTmp[,selectedCols,drop=FALSE]
       } else { #1D spectra
           selectedCols<-NULL
+          if(ppmNames=="borders"){
+            if(dataProvidedtoFunction){
+              colnamesTMP<-matrix(as.numeric(unlist(strsplit(colnames(
+                            NMRdataTmp),","))),ncol=2,byrow=TRUE)
+              coordTmpAll<-apply(colnamesTMP[,1:2],1,mean)
+            } else {
+              coordTmpAll<-apply(mrbin.env$mrbinTMP$binRegions[,1:2],1,mean)
+            }
+          }
+          if(ppmNames=="mean"){
+              coordTmpAll<-as.numeric(colnames(NMRdataTmp))
+          }
           for(j in 1:ncol(NMRdataTmp)){
-              coordTmp<-apply(mrbin.env$mrbinTMP$binRegions[,1:2],1,mean)[j]#
-                     if(!(coordTmp>mrbin.env$mrbinparam$PQNsugarArea[2]&coordTmp<mrbin.env$mrbinparam$PQNsugarArea[1])){
-                              selectedCols<-c(selectedCols,j)
-                     }
+            coordTmp<-coordTmpAll[j]#
+            if(!(coordTmp>sugarArea[2]&
+                 coordTmp<sugarArea[1])){
+                   selectedCols<-c(selectedCols,j)
+            }
           }
           NMRdataTmp2<-NMRdataTmp[,selectedCols,drop=FALSE]
-        #NMRdataTmp2<-NMRdataTmp
       }
     }
     #Calculate fold changes versus reference sample
     NMRdataTmp_scaledMedian<-NMRdataTmp
-    PQNminimumFeatures<-min(max(mrbin.env$mrbinparam$PQNminimumFeatures,floor(.25*ncol(NMRdataTmp2))),ncol(NMRdataTmp2))
-    #if(mrbin.env$mrbinparam$PQNminimumFeatures>ncol(NMRdataTmp2)) mrbin.env$mrbinparam$PQNminimumFeatures<-ncol(NMRdataTmp2)
+    PQNminimumFeatures<-min(max(minimumFeatures,floor(.25*ncol(NMRdataTmp2))),ncol(NMRdataTmp2))
     medianFoldChanges<-rep(0,nrow(NMRdataTmp_scaledMedian))
     names(medianFoldChanges)<-rownames(NMRdataTmp_scaledMedian)
-    if(mrbin.env$mrbinparam$PQNshowHist){#Plot distribution of fold changes per sample
+    if(showHist){#Plot distribution of fold changes per sample
       oldpar<-graphics::par("mar","mfrow")
       on.exit(graphics::par(oldpar))
       graphics::par(mfrow=c(ceiling(sqrt(nrow(NMRdataTmp2))),ceiling(sqrt(nrow(NMRdataTmp2)))))
@@ -3468,10 +3524,15 @@ if(nrow(mrbin.env$mrbinTMP$binRegions)>1){
     }
     for(i in 1:nrow(NMRdataTmp2)){#scale to spectral area, use only points above X% quantile for better reliability
         overlapAboveNoise<- sort(NMRdataTmp2[i,],index.return=TRUE,decreasing=TRUE)$ix[1:PQNminimumFeatures]#$ix returns the index for matrix data
+        #cat(paste(PQNminimumFeatures,i,nrow(NMRdataTmp2),ncol(NMRdataTmp2),"\n"))
+        #cat(is.list(NMRdataTmp2),is.list(NMRdataTmp),is.list(NMRdata),"\n")
+        #cat(NMRdataTmp2[i,1:5],"\n")
+        #cat(sort(NMRdataTmp2[i,],index.return=TRUE,decreasing=TRUE)$ix[1:5],"\n")
+        #cat(overlapAboveNoise,"\n")
         medianFoldChanges[i]<-stats::median(NMRdataTmp2[i,overlapAboveNoise]/
                                      NMRdataTmp2[medianSample,overlapAboveNoise])
         NMRdataTmp_scaledMedian[i,]<-NMRdataTmp[i,]/medianFoldChanges[i]
-      if(mrbin.env$mrbinparam$PQNshowHist){#Plot distribution of fold changes per sample
+      if(showHist){#Plot distribution of fold changes per sample
             graphics::hist(NMRdataTmp2[i,overlapAboveNoise]/NMRdataTmp2[medianSample,overlapAboveNoise],breaks=60,
             main=rownames(NMRdataTmp2)[i],xlab="",ylab="")
             graphics::lines(rep(medianFoldChanges[i],2),c(0,20000),col='red')
@@ -3479,23 +3540,17 @@ if(nrow(mrbin.env$mrbinTMP$binRegions)>1){
     }
     #Remove reference sample from list
     NMRdataTmp_scaledMedian<-NMRdataTmp_scaledMedian[-nrow(NMRdataTmp_scaledMedian),,drop=FALSE]
-    #if(nrow(mrbin.env$bins)==1){
-    #        rownamesTMP<-rownames(mrbin.env$bins)
-    #        colnamesTMP<-colnames(mrbin.env$bins)
-    #        mrbin.env$bins<-matrix(NMRdataTmp_scaledMedian,nrow=1)
-    #        rownames(mrbin.env$bins)<-rownamesTMP
-    #        colnames(mrbin.env$bins)<-colnamesTMP
-    #} else {
+    if(!dataProvidedtoFunction){
       mrbin.env$bins<-NMRdataTmp_scaledMedian
-    #}
-    mrbin.env$mrbinparam$medians<-medianFoldChanges
+      mrbin.env$mrbinparam$medians<-medianFoldChanges
+    }
    } else {
       warning("Too few samples to perform PQN normalization.")
    }
  } else {
-   warning("Too few bins for PQN scaling. PQN scaling stopped.")
+   warning("Too few bins to perform PQN scaling.")
  }
-
+ invisible(NMRdataTmp_scaledMedian)
 }
 
 
