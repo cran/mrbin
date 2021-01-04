@@ -1,5 +1,12 @@
 # mrbin News
 
+## Version 1.5.0
+
+* An error in reference scaling was fixed, this prevented reference scaling in some cases
+* PQN scaling is now performed after fixing negative values by atnv() (previously: before atnv). This might slightly change PQN scaling results in rare cases
+* Speed improvements by adding optional support for parallel computing using the parallel package
+
+
 ## Version 1.4.4
 
 * Function PQNScaling now works with externally provided data

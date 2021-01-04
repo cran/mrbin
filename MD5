@@ -1,12 +1,12 @@
-7575d15b2c8ef87cb156986ed16d4f87 *DESCRIPTION
+2e7f7139f493fb33fb96f3c0c81b3320 *DESCRIPTION
 a9359f9de8b7100a97a86073ce7085c7 *NAMESPACE
-a9fd1b8e173bbb3193375b27f71f2589 *NEWS.md
-ec2e1c3e8e6830eed00b303fb3c157ac *R/mrbin.R
+7d008f454c0df21248d85a2c962941c5 *NEWS.md
+2236f968119e0b08a5ee78582ad4d8bf *R/mrbin.R
 b263367b9a0644c2fa895254c7f98c8b *README.md
 03926f300ad692c7ebb7b51c977d67e6 *build/vignette.rds
 b8d7163d7ae6ff086a018ff59407de99 *inst/doc/mrbin.R
-dc881d20bff9863433ff89358ea77af0 *inst/doc/mrbin.Rnw
-26b5256a2554c54ea1083bb98976829d *inst/doc/mrbin.pdf
+a9910505745dd1cf92bace8465707519 *inst/doc/mrbin.Rnw
+ddef5dfa2484091700f52837808d9100 *inst/doc/mrbin.pdf
 7b02c0e5793e4043060634d0ae0a151d *inst/extdata/1/10/pdata/10/1r
 0a67540dea70f95671702dc84c0d4896 *inst/extdata/1/10/pdata/10/proc
 b3c867d628a161ddac3ad3093d8a6dd6 *inst/extdata/1/10/pdata/10/procs
@@ -54,7 +54,7 @@ cd96c8b6aba047be56bc9b8b17050fc5 *man/mrbin.Rd
 03a98f5da7ff9d5979bff8f9499e4426 *man/plotResults.Rd
 cc556adf8d192b12193fbb57011dd557 *man/printParameters.Rd
 3daa3bc2b78f64410dd88b0787d0a960 *man/putToEnv.Rd
-a3a38854eb2805f6bf1a05797b736e2a *man/readBruker.Rd
+d9be4041cde92eea88c0eb8da92f4ce8 *man/readBruker.Rd
 99081c5470f606675cb701d9a36084f7 *man/recreatemrbin.Rd
 bd275d882dcc49fd103fefd2e3f3dc50 *man/removeNoise.Rd
 1e8865b173dbd5ee207004e2bb50e09b *man/resetEnv.Rd
@@ -65,4 +65,4 @@ b7d2275671084e329be270f1f1976396 *man/setParam.Rd
 0df33e0e5841513bd3a22a895a7c0317 *man/zoom.Rd
 02aa28c02bd50c556923f5f34f50b7b2 *man/zoomIn.Rd
 0e6257810c698187fa58a3d91ef92bc5 *man/zoomOut.Rd
-dc881d20bff9863433ff89358ea77af0 *vignettes/mrbin.Rnw
+a9910505745dd1cf92bace8465707519 *vignettes/mrbin.Rnw
