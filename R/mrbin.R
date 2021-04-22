@@ -280,6 +280,13 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
   if(silent) startmrbin<-"Start binning now"
   #Create bin list?
   if(!silent){
+   #On Apple or Mac computer, display a hint for installing Quartz
+   if(Sys.info()['sysname']=='Darwin'){
+     if(mrbin.env$mrbinparam$verbose){
+       message("Hint: If you see text lists instead of dialog boxes, please install xquartz \nfrom https://www.xquartz.org")
+       utils::flush.console()
+     }
+   }
    selectStep<--2
    lastStepDone<-FALSE
    while(!lastStepDone&!stopTMP){
@@ -2522,8 +2529,6 @@ selectBrukerFolders<-function(keep=FALSE){#Select Bruker NMR spectral folders
              spectrum_proc_path<-NULL
              if(length(subdirsTmp0)>0){
                #Look for Bruker NMR data in folder.
-               #if(sum(sapply(suppressWarnings(as.numeric(subdirsTmp0)),is.numeric))>0){ #Look for folders "1", "2" etc (EXPNO)
-               #    spectrum_path2<-paste(selectList,"/",subdirsTmp0[which(sapply(suppressWarnings(as.numeric(subdirsTmp0)),is.numeric))],sep="")
                if(sum(!is.na(suppressWarnings(as.numeric(subdirsTmp0))))>0){ #Look for folders "1", "2" etc (EXPNO)
                    spectrum_path2<-paste(selectList,"/",subdirsTmp0[!is.na(suppressWarnings(as.numeric(subdirsTmp0)))],sep="")
                    for(i in spectrum_path2){
@@ -2537,7 +2542,8 @@ selectBrukerFolders<-function(keep=FALSE){#Select Bruker NMR spectral folders
                    }
                  if(length(spectrum_path_list)>0){
                    for(i in 1:length(spectrum_path_list)){
-                       if(datanameTmp%in%list.files(spectrum_path_list[i])){
+                       list.filesTMP<-list.files(spectrum_path_list[i])
+                       if(datanameTmp%in%list.filesTMP&"title"%in%list.filesTMP){
                            spectrum_proc_path<-c(spectrum_proc_path,spectrum_path_list[i])
                        }
                     }
@@ -2563,7 +2569,8 @@ selectBrukerFolders<-function(keep=FALSE){#Select Bruker NMR spectral folders
                }
                if(length(spectrum_path_list)>0){
                  for(i in 1:length(spectrum_path_list)){
-                     if(datanameTmp%in%list.files(spectrum_path_list[i])){
+                     list.filesTMP<-list.files(spectrum_path_list[i])
+                     if(datanameTmp%in%list.filesTMP&"title"%in%list.filesTMP){
                          spectrum_proc_path<-c(spectrum_proc_path,spectrum_path_list[i])
                      }
                   }

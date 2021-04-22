@@ -1,5 +1,11 @@
 # mrbin News
 
+## Version 1.5.1
+
+* Small improvement in spectrum browsing. Experiments with no title file are no longer displayed during browsing, as these are usually uninformative pulse calibration data
+* Added a message recommending installing xquartz on Apple computers
+* Citation information was added
+
 ## Version 1.5.0
 
 * An error in reference scaling was fixed, this prevented reference scaling in some cases
