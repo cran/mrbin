@@ -65,20 +65,19 @@ atnv<-function(NMRdata=NULL,noiseLevels=NULL){
        }
      }
      if(is.null(noiseLevels)){
-             noiseTMP<-sort(NMRdata[NMRdata>0])[ceiling(.01*length(NMRdata[
-                            NMRdata>0]))]
+         noiseTMP<-sort(NMRdata[NMRdata>0])[ceiling(.01*length(NMRdata[
+                        NMRdata>0]))]
      }
      for(i in 1:ncol(NMRdata)){
         negatives<-NMRdata[,i]<=0
-
-        if(!is.null(noiseLevels)){#If noise levels are available, restrict range to below noise
-           if(length(negatives)>0){
-             noiseTMP<-stats::median(noiseLevels[negatives])
-           } else {
-             noiseTMP<-stats::median(noiseLevels)
-           }
-        }
         if(sum(negatives)>0){
+          if(!is.null(noiseLevels)){#If noise levels are available, restrict range to below noise
+             #if(sum(negatives)>0){
+               noiseTMP<-stats::median(noiseLevels[negatives])
+             #} else {
+             #  noiseTMP<-stats::median(noiseLevels)
+             #}
+          }
             minTMP<-min(NMRdata[negatives,i])#select lowest bin
             if(sum(!negatives)>0){
               maxTMP<-min(noiseTMP,min(NMRdata[!negatives,i]))#select lowest bin above 0
@@ -235,7 +234,8 @@ resetEnv<-function(){
                numberOfFeaturesAfterTrimmingZeros=NULL,
                numberOfFeaturesAfterNoiseRemoval=NULL,
                numberOfFeaturesAfterCropping=NULL,
-               tryParallel=TRUE
+               tryParallel=TRUE,
+               warningMessages=NULL
                ),mrbin.env)
     assign("mrbinparam_copy",mrbin.env$mrbinparam,mrbin.env)
     assign("mrbinplot",list(
@@ -1934,8 +1934,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
 #' PCA plot. Parameters are then saved in a text file. These can be recreated
 #' using recreatemrbin().
 #' @return {None}
-#' @keywords internal
-#' @noRd
+#' @export
 #' @examples
 #' setParam(parameters=list(dimension="2D",binwidth2D=0.05,binheight=3,PQNScaling="No",
 #'          fixNegatives="No",logTrafo="No",signal_to_noise2D=20,
@@ -2695,7 +2694,8 @@ binMultiNMR<-function(){
       try(
         parallel::clusterExport(cluster, c(
           "readNMR","readBruker","referenceScaling","removeSolvent2",
-          "removeAreas2","binSingleNMR","calculateNoise"))
+          "removeAreas2","binSingleNMR","calculateNoise",
+          "checkBaseline"))
       ,silent=TRUE)
       try(
         binData<-parallel::parLapply(cluster,
@@ -2720,7 +2720,7 @@ binMultiNMR<-function(){
       if(exists("binData")){
         if(!is.list(binData)){
            useParallel<-FALSE
-           warning("Parallel computing did not succeed, using regular mode.")
+           warning("Parallel computing not successful, using regular mode.")
           }
       } else {
          useParallel<-FALSE
@@ -2753,6 +2753,15 @@ binMultiNMR<-function(){
                                       nrow=length(mrbin.env$mrbinparam$NMRfolders))
     currentSpectrumNameTMP<-paste("TemporaryRowName_",1:length(mrbin.env$mrbinparam$NMRfolders),sep="")
     for(ibinData in 1:length(binData)){
+      #for(iWarning in 1:length(binData[[ibinData]]$warningMessage)){
+        if(!is.null(binData[[ibinData]]$warningMessage)){
+          warning(binData[[ibinData]]$warningMessage)
+          #save warning messages to parameters
+           mrbin.env$mrbinparam$warningMessages<-
+              c(mrbin.env$mrbinparam$warningMessages,
+                binData[[ibinData]]$warningMessage)
+        }
+      #}
       mrbin.env$mrbinTMP$binsRaw[ibinData,]<-binData[[ibinData]]$binTMP
       mrbin.env$mrbinTMP$meanNumberOfPointsPerBin[ibinData,]<-binData[[ibinData]]$meanNumberOfPointsPerBin_TMP#mrbin.env$mrbinTMP$meanNumberOfPointsPerBin_TMP
       mrbin.env$mrbinparam$noise_level_Raw[ibinData]<-binData[[ibinData]]$noise_level_Raw_TMP
@@ -3156,6 +3165,59 @@ removeNoise<-function(){#remove noise peaks
    warning("Too few bins for noise removal. Noise removal stopped.")
  }
 }
+
+
+#' A function for checking for baseline distortions.
+#'
+#' This function checks for each spectrum whether the median intensity in the
+#' noise region is further than 10 standard deviation from zero. In this
+#' case, a warning is displayed.
+#' @param NMRdata Spectral data
+#' @param dimension Dimension
+#' @param currentSpectrumName Spectrum name
+#' @param noiseRange1d Noise range
+#' @param noiseRange2d Noise range
+#' @return An (invisible) object containing the warning message
+#' @keywords internal
+#' @noRd
+#' @examples
+#' \donttest{ checkBaseline()  }
+
+checkBaseline<-function(NMRdata=NULL,dimension="1D",currentSpectrumName=NULL,
+   noiseRange1d=NULL,noiseRange2d=NULL){#check noise region for baseline distortions
+  if(!is.null(NMRdata)){
+    if(dimension=="1D"){
+         baseline_level<-stats::median(NMRdata[
+                 which(as.numeric(names(NMRdata))<=max(noiseRange1d[1:2])&
+                      as.numeric(names(NMRdata))>=min(noiseRange1d[1:2]))])
+         sd_level<-stats::sd(NMRdata[
+                 which(as.numeric(names(NMRdata))<=max(noiseRange1d[1:2])&
+                      as.numeric(names(NMRdata))>=min(noiseRange1d[1:2]))])
+    }
+    if(dimension=="2D"){
+         baseline_level<-stats::median(NMRdata[
+               which(as.numeric(rownames(NMRdata))>=min(noiseRange2d[3:4])&
+                 as.numeric(rownames(NMRdata))<=max(noiseRange2d[3:4])),
+               which(as.numeric(colnames(NMRdata))<=max(noiseRange2d[1:2])&
+                 as.numeric(colnames(NMRdata))>=min(noiseRange2d[1:2]))])
+         sd_level<-stats::sd(NMRdata[
+               which(as.numeric(rownames(NMRdata))>=min(noiseRange2d[3:4])&
+                 as.numeric(rownames(NMRdata))<=max(noiseRange2d[3:4])),
+               which(as.numeric(colnames(NMRdata))<=max(noiseRange2d[1:2])&
+                 as.numeric(colnames(NMRdata))>=min(noiseRange2d[1:2]))])
+    }
+    warningMessage<-NULL
+    if(abs(baseline_level)/sd_level>10){
+      warningMessage<-paste("Baseline is not flat in noise region for sample:\n",
+                  currentSpectrumName,
+                  "\nPlease check phase and baseline. Results may be corrupted.",
+                  sep="")
+    }
+    invisible(warningMessage)
+ }
+}
+
+
 
 #' A function for cropping HSQC spectra.
 #'
@@ -4056,6 +4118,7 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
    useAsNames="Spectrum titles"
    ){#Bin NMR spectral data
   if(!is.null(folder)){
+    warningMessage<-NULL
     NMRdataList<-readNMR(folder=folder,dimension=dimension,
                   NMRvendor=NMRvendor,useAsNames=useAsNames)
     NMRdata<-NMRdataList$currentSpectrum
@@ -4066,6 +4129,16 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
           reference1D=reference1D,reference2D=reference2D,dimension=dimension)
       NMRdata<-referenceScalingList$scaledSpectrum
       scalingFactor<-referenceScalingList$scalingFactor
+      if(scalingFactor<0){
+        scalingFactor<-abs(scalingFactor)
+        warningMessage<-#c(warningMessage,
+          paste(
+          "Reference signal is negative for sample:\n",
+          NMRdataList$currentSpectrumName,
+          "\nPlease check phase and baseline. Results may be corrupted.",
+          sep="")#)
+        #warning(warningMessage)
+      }
     }
     if(removeSolvent=="Yes") NMRdata<-removeSolvent2(NMRdata=NMRdata,
                dimension=dimension,solventRegion=solventRegion)
@@ -4078,6 +4151,22 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
                pointsPerBin=binData$pointsPerBin,dimension=dimension,
                noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d
                )#list
+    if(referenceScaling=="Yes"){
+      if(scalingFactor<(3*noiseData$noise_level)){
+        warningMessage<-c(warningMessage,paste(
+          "Reference signal is very low for sample:\n",
+          NMRdataList$currentSpectrumName,
+          "\nPlease check if reference peak is at 0ppm. Results may be corrupted.",
+          sep=""))
+      }
+    }
+    warningMessageTMP<-
+       checkBaseline(NMRdata=NMRdataOriginal,dimension=dimension,
+               currentSpectrumName=NMRdataList$currentSpectrumName,
+               noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d)
+    if(!is.null(warningMessageTMP)){
+      warningMessage<-paste(warningMessage,warningMessageTMP,sep="\n")
+    }
     #noiseDataScaled<-calculateNoise(NMRdata=NMRdata,
     #           pointsPerBin=binData$pointsPerBin,dimension=dimension,
     #           noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d
@@ -4086,7 +4175,8 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
        meanNumberOfPointsPerBin_TMP=binData$pointsPerBin,#mrbin.env$mrbinTMP$meanNumberOfPointsPerBin_TMP
        noise_level_Raw_TMP=noiseData$noise_level,
        noise_level_TMP=noiseData$noise_level_TMP/scalingFactor,#noiseDataScaled$noise_level_TMP,
-       currentSpectrumName=NMRdataList$currentSpectrumName
+       currentSpectrumName=NMRdataList$currentSpectrumName,
+       warningMessage=warningMessage
        ))
   }
 }
@@ -4416,18 +4506,34 @@ binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
    }
  } else {#1D spectra
    NMRspectrumNames<-as.numeric(names(currentSpectrum))
-   for(ibinTMP in 1:nrow(binRegions)){
-      numberOfPointsPerBinTMP<-sum(NMRspectrumNames<=binRegions[ibinTMP,1]&
-                                    NMRspectrumNames>binRegions[ibinTMP,2])
-      numberOfPointsPerBin<-c(numberOfPointsPerBin,numberOfPointsPerBinTMP)
-      if(numberOfPointsPerBinTMP>0){
-         binTMP[ibinTMP]<-sum(currentSpectrum[
-                          NMRspectrumNames<=binRegions[ibinTMP,1]&
-                          NMRspectrumNames>binRegions[ibinTMP,2]])/numberOfPointsPerBinTMP
-         #Set to NA: Make sure each point is counted only once for rectangular bins. For custom bins lists, double counting may be on purpose
-         if(binMethod=="Rectangular bins") currentSpectrum[NMRspectrumNames<=binRegions[ibinTMP,1]&
-                                 NMRspectrumNames>binRegions[ibinTMP,2]]<-NA
-      }
+   if(TRUE){
+     for(ibinTMP in 1:nrow(binRegions)){
+        indexTMP<-NMRspectrumNames<=binRegions[ibinTMP,1]&
+                                      NMRspectrumNames>binRegions[ibinTMP,2]
+        numberOfPointsPerBinTMP<-sum(indexTMP)
+        numberOfPointsPerBin<-c(numberOfPointsPerBin,numberOfPointsPerBinTMP)
+        if(numberOfPointsPerBinTMP>0){
+           binTMP[ibinTMP]<-sum(currentSpectrum[
+                            indexTMP])/numberOfPointsPerBinTMP
+           #Set to NA: Make sure each point is counted only once for rectangular bins. For custom bins lists, double counting may be on purpose
+           #if(binMethod=="Rectangular bins") currentSpectrum[NMRspectrumNames<=binRegions[ibinTMP,1]&
+           #                        NMRspectrumNames>binRegions[ibinTMP,2]]<-NA
+        }
+     }
+   }
+   if(FALSE){
+     #avoid time-consuming loop - but this takes far too much memory in
+     #parallel mode. Without parallel, it might save only little time
+     indexMatrix<-matrix(rep(NMRspectrumNames,nrow(binRegions)),
+                         nrow=nrow(binRegions),byrow=TRUE)
+     valueMatrix<-matrix(rep(currentSpectrum,nrow(binRegions)),
+                         nrow=nrow(binRegions),byrow=TRUE)
+     indexMatrix2<-indexMatrix<=binRegions[,1]&
+                   indexMatrix>binRegions[,2]
+     numberOfPointsPerBin<-apply(indexMatrix2,1,sum)
+     binTMP<-apply(valueMatrix*indexMatrix2,1,sum)/numberOfPointsPerBin
+     names(binTMP)<-rownames(binRegions)
+     binTMP[is.na(binTMP)]<-0
    }
   }
   if(is.null(numberOfPointsPerBin)){

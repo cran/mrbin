@@ -1,6 +1,6 @@
 Package: mrbin
 Title: Magnetic Resonance Binning, Integration and Normalization
-Version: 1.5.1
+Version: 1.5.2
 Authors@R: 
     person(given = "Matthias",
            family = "Klein",
@@ -21,10 +21,11 @@ Encoding: UTF-8
 RoxygenNote: 7.1.1
 Suggests: parallel
 VignetteBuilder: utils
-URL: http://www.kleinomicslab.com/software/
+URL: http://www.kleinomicslab.com/software/,
+        https://github.com/kleinomicslab/mrbin
 NeedsCompilation: no
-Packaged: 2021-04-22 15:37:15 UTC; klein.663
+Packaged: 2021-04-29 17:07:16 UTC; klein.663
 Author: Matthias Klein [aut, cre] (<https://orcid.org/0000-0001-7455-5381>)
 Maintainer: Matthias Klein <klein.663@osu.edu>
 Repository: CRAN
-Date/Publication: 2021-04-22 16:30:02 UTC
+Date/Publication: 2021-04-29 18:00:03 UTC

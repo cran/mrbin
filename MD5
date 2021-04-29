@@ -1,13 +1,13 @@
-ef29bd2f7632de9e9a0292a59d40b068 *DESCRIPTION
-7f94418486e35f5353e943157a87ae3f *NAMESPACE
-bcc4d78308c76de0ff3d0aaf199502c0 *NEWS.md
-812d1c75829aa7ab0d04710120e94860 *R/mrbin.R
-b263367b9a0644c2fa895254c7f98c8b *README.md
+45ec6be859af63ac01d1d4c9f6ca4fe7 *DESCRIPTION
+4dfeeea13c6586e15bded0acc4b5a5b8 *NAMESPACE
+703a1f47a0b80daf3a9fdf1e811edbee *NEWS.md
+a4ae2eaf01ace33f9504b68af25b1d10 *R/mrbin.R
+89aefbf3b705597ef0bfdddc95bc2c34 *README.md
 03926f300ad692c7ebb7b51c977d67e6 *build/vignette.rds
 d7ee8641be175f4b08ac536579976112 *inst/CITATION
-b8d7163d7ae6ff086a018ff59407de99 *inst/doc/mrbin.R
-3f58f0b83b1ad595476c17cd1c05d4cf *inst/doc/mrbin.Rnw
-5dd46db63b2eae1bcd0c05c3fe4db5da *inst/doc/mrbin.pdf
+90464a5eb4996b4c0ced6b4e791eb4d5 *inst/doc/mrbin.R
+5f69d77d63d1b266ea60dd66beee4f1d *inst/doc/mrbin.Rnw
+a3a11093dd7a1dd13036d8433bf957b2 *inst/doc/mrbin.pdf
 7b02c0e5793e4043060634d0ae0a151d *inst/extdata/1/10/pdata/10/1r
 0a67540dea70f95671702dc84c0d4896 *inst/extdata/1/10/pdata/10/proc
 b3c867d628a161ddac3ad3093d8a6dd6 *inst/extdata/1/10/pdata/10/procs
@@ -51,6 +51,7 @@ c2d56961795e69be81a6566fb6a03ad2 *man/intPlus.Rd
 d1f87fd7b16980aa039014d630c3bb4a *man/left.Rd
 958db96e2db64b2152b291a3d609be25 *man/logTrafo.Rd
 cd96c8b6aba047be56bc9b8b17050fc5 *man/mrbin.Rd
+fdc4aa6151f76cd50fe2fb4c21ca067b *man/mrbinrun.Rd
 78cce5942561dd6455b885b56a860a70 *man/plotNMR.Rd
 03a98f5da7ff9d5979bff8f9499e4426 *man/plotResults.Rd
 cc556adf8d192b12193fbb57011dd557 *man/printParameters.Rd
@@ -66,4 +67,4 @@ b7d2275671084e329be270f1f1976396 *man/setParam.Rd
 0df33e0e5841513bd3a22a895a7c0317 *man/zoom.Rd
 02aa28c02bd50c556923f5f34f50b7b2 *man/zoomIn.Rd
 0e6257810c698187fa58a3d91ef92bc5 *man/zoomOut.Rd
-3f58f0b83b1ad595476c17cd1c05d4cf *vignettes/mrbin.Rnw
+5f69d77d63d1b266ea60dd66beee4f1d *vignettes/mrbin.Rnw
