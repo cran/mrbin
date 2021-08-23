@@ -4,7 +4,7 @@
 \alias{zoom}
 \title{A function for changing plotNMR plots.}
 \usage{
-zoom(left = NULL, right = NULL, top = NULL, bottom = NULL)
+zoom(left = NULL, right = NULL, top = NULL, bottom = NULL, refreshPlot = TRUE)
 }
 \arguments{
 \item{left}{New left boundary}
@@ -14,6 +14,8 @@ zoom(left = NULL, right = NULL, top = NULL, bottom = NULL)
 \item{top}{New top boundary}
 
 \item{bottom}{New bottom boundary}
+
+\item{refreshPlot}{Refresh plot automatically. Defaults to TRUE}
 }
 \value{
 {None}

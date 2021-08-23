@@ -4,7 +4,10 @@
 \alias{up}
 \title{A function for changing plotNMR plots.}
 \usage{
-up()
+up(refreshPlot = TRUE)
+}
+\arguments{
+\item{refreshPlot}{Refresh plot automatically. Defaults to TRUE}
 }
 \value{
 {None}
@@ -13,6 +16,7 @@ up()
 This function moves up the plot region of the current NMR plot (only 2D).
 }
 \examples{
+resetEnv()
 mrbin(silent=TRUE,parameters=list(dimension="2D",binwidth2D=0.5,
          binheight=3,PQNScaling="No",referenceScaling="No",binRegion=c(4,3,60,65),
          noiseRemoval="No",trimZeros="No",cropHSQC="No",

@@ -4,7 +4,14 @@
 \alias{intMin}
 \title{A function for changing plotNMR plots.}
 \usage{
-intMin()
+intMin(dimension = "1D", refreshPlot = TRUE, value = NULL)
+}
+\arguments{
+\item{dimension}{Dimension to use. Defaults to "1D"}
+
+\item{refreshPlot}{Refresh plot automatically. Defaults to TRUE}
+
+\item{value}{Set exact value. Defaults to NULL}
 }
 \value{
 {None}

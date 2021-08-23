@@ -4,7 +4,10 @@
 \alias{right}
 \title{A function for changing plotNMR plots.}
 \usage{
-right()
+right(refreshPlot = TRUE)
+}
+\arguments{
+\item{refreshPlot}{Refresh plot automatically. Defaults to TRUE}
 }
 \value{
 {None}
@@ -13,6 +16,7 @@ right()
 This function moves right the plot region of the current NMR plot.
 }
 \examples{
+resetEnv()
 mrbin(silent=TRUE,parameters=list(dimension="1D",binwidth1D=.5,
          noiseRemoval="No",trimZeros="No",
          PQNScaling="No",saveFiles="No",referenceScaling="No",

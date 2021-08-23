@@ -14,11 +14,10 @@ This function plots boxplots (bin-wise and sample-wise) as visual quality indica
 }
 \examples{
 mrbinExample<-mrbin(silent=TRUE,setDefault=FALSE,parameters=list(dimension="2D",
-                    binwidth2D=0.05,binheight=3,
-                    PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",
-                    fixNegatives="No",logTrafo="No",PCA="No",
-                    NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
-                                system.file("extdata/2/12/pdata/10",package="mrbin"),
-                                system.file("extdata/3/12/pdata/10",package="mrbin"))))
+    binRegion=c(8,1,15,140),binwidth2D=0.1,binheight=4,solventRegion=c(5.5,4.2),
+    PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",
+    fixNegatives="No",logTrafo="No",PCA="No",signal_to_noise2D=10,
+    NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
+                 system.file("extdata/2/12/pdata/10",package="mrbin"))))
 plotResults()
 }

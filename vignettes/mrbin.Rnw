@@ -18,7 +18,7 @@
 
 \title{mrbin - Magnetic Resonance Binning, Integration and Normalization}
 \author{Matthias S. Klein}
-\date{Version 1.5.2}
+\date{Version 1.6.0}
 \maketitle
 %\tableofcontents
 %\pagebreak
@@ -333,7 +333,16 @@ flow.\\
 
 The mrbin package contains basic plotting commands for 1D and 2D NMR data.\\
 
-To use these, you need to first load one NMR spectrum:
+Most convenient is using the mrplot function, which is menu-based:
+\begin{verbatim}
+mrplot()
+\end{verbatim}
+
+In mrplot, multiple spectra shown overlaid. If both 1D and 2D spectra are added,
+both are shown in region-matched plots, e.g. for metbolite identification
+purposes.\\
+
+To use the more basic commands, you need to first load one NMR spectrum:
 
 \begin{verbatim}
 readBruker(dimension="1D",folder=system.file("extdata/1/10/pdata/10",package="mrbin"))

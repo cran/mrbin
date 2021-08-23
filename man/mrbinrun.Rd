@@ -20,9 +20,11 @@ PCA plot. Parameters are then saved in a text file. These can be recreated
 using recreatemrbin().
 }
 \examples{
-setParam(parameters=list(dimension="2D",binwidth2D=0.05,binheight=3,PQNScaling="No",
-         fixNegatives="No",logTrafo="No",signal_to_noise2D=20,
-         NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
-                      system.file("extdata/2/12/pdata/10",package="mrbin"))))
+resetEnv()
+setParam(parameters=list(dimension="2D",binwidth2D=0.1,binheight=4,
+   binRegion=c(8,1,15,140),PQNScaling="No",
+   fixNegatives="No",logTrafo="No",signal_to_noise2D=10,solventRegion=c(5.5,4.2),
+   NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
+                system.file("extdata/2/12/pdata/10",package="mrbin"))))
 mrbinrun()
 }

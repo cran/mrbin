@@ -44,6 +44,7 @@ NULL
 #' @return NMRdata An invisible matrix containing NMR data without negative values.
 #' @export
 #' @examples
+#'  resetEnv()
 #'  Example<-mrbin(silent=TRUE,
 #'                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
 #'                    binwidth1D=0.005,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,7.5,10,156),
@@ -120,6 +121,22 @@ atnv<-function(NMRdata=NULL,noiseLevels=NULL){
     resetEnv()
 }
 
+#' A function executed when attaching this package
+#'
+#' This function displays a welcome message.
+#' @param  libname Library name
+#' @param  pkgname Package name
+#' @return {None}
+#' @keywords internal
+#' @noRd
+#' @examples
+#' \donttest{ .onAttach() }
+
+.onAttach <- function(libname, pkgname){
+    packageStartupMessage(paste("mrbin ","1.6.0",#as.character(utils::packageVersion("mrbin")),
+      "\n","Please check regularly for updates at https://CRAN.R-project.org/package=mrbin",sep=""))
+}
+
 #' A parameter resetting function
 #'
 #' This function resets the parameter variables.
@@ -156,23 +173,29 @@ resetEnv<-function(){
                currentSpectrumEXPNO=NULL,
                currentSpectrumFolderName_EXPNO=NULL,
                currentSpectrumTitle=NULL,
-               i=1
+               i=1,
+               additionalPlots1D=NULL,
+               additionalPlots1DMetadata=NULL,
+               additionalPlots2D=NULL,
+               additionalPlots2DMetadata=NULL
     ),mrbin.env)
     assign("requiredParam",c(
                "dimension","binMethod","binRegion","specialBinList","referenceScaling",
                "removeSolvent","removeAreas","sumBins","noiseRemoval","PQNScaling",
                "PQNIgnoreSugarArea","PQNsugarArea","fixNegatives","logTrafo","tryParallel",
                "defineGroups","PCA","solventRegion","noiseThreshold","trimZeros",
-               "PQNminimumFeatures","PCAtitlelength","createBins","useAsNames","saveFiles",
+               "PQNminimumFeatures","PCAtitlelength","createBins","useAsNames",
+               "useMeanIntensityForBins","saveFiles",
                "outputFileName","verbose","removeAreaList","sumBinList","Factors","NMRfolders"
                ),mrbin.env)
     assign("requiredParam1D",c(
-               "binwidth1D","reference1D","signal_to_noise1D","noiseRange1d",
+               "binwidth1D","reference1D","signal_to_noise1D","noiseRange1d","previewRegion1D",
                mrbin.env$requiredParam
                ),mrbin.env)
     assign("requiredParam2D",c(
                "binwidth2D","binheight","cropHSQC","reference2D","signal_to_noise2D",
                "noiseRange2d","croptopRight","croptopLeft","cropbottomRight","cropbottomLeft",
+               "previewRegion2D",
                mrbin.env$requiredParam
                ),mrbin.env)
     assign("mrbinparam", list(
@@ -218,7 +241,10 @@ resetEnv<-function(){
                createBins="Yes",
                useAsNames="Folder names",#"Folder names and EXPNO", "Spectrum titles"
                NMRvendor="Bruker",#NMR vendor. Currently, only Bruker data is supported.
+               useMeanIntensityForBins=FALSE,
                mrbinversionTracker=mrbin.env$mrbinTMP$mrbinversion,
+               previewRegion1D=c(1.5,1.15,16.5,27),
+               previewRegion2D=c(2,1,16.5,27),
                saveFiles="No",
                verbose=TRUE,
                outputFileName=NULL,
@@ -242,6 +268,8 @@ resetEnv<-function(){
                lowestContour=.01,
                plotRegion=NULL,
                intensityScale=1,
+               intensityScale2D=1,
+               intensityOffset=0,
                nContours=60,
                heatmap=FALSE),mrbin.env)
 }
@@ -260,7 +288,7 @@ resetEnv<-function(){
 #' @examples
 #' # Set parameters in command line.
 #' mrbinExample<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
-#'                 binwidth1D=0.05,signal_to_noise1D=100,
+#'                 binwidth1D=0.01,signal_to_noise1D=25,
 #'                 NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                             system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                             system.file("extdata/3/10/pdata/10",package="mrbin")),
@@ -430,6 +458,24 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                   mrbin.env$mrbinTMP$currentFolder<-mrbin.env$mrbinparam$NMRfolders[1]
                   if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes"|mrbin.env$mrbinparam$PCA=="Yes"){
                     readNMR2()
+                    mrbin.env$mrbinTMP$additionalPlots1D<-NULL
+                    mrbin.env$mrbinTMP$additionalPlots1DMetadata<-NULL
+                    mrbin.env$mrbinTMP$additionalPlots2D<-NULL
+                    mrbin.env$mrbinTMP$additionalPlots2DMetadata<-NULL
+                    #Find 3 more spectra: 33 percentile, 66 percentile, last spectrum
+                    spectrumListPlotTMP<-setdiff(unique(c(
+                      ceiling(length(mrbin.env$mrbinparam$NMRfolders)*.33),
+                      ceiling(length(mrbin.env$mrbinparam$NMRfolders)*.66),
+                      length(mrbin.env$mrbinparam$NMRfolders))),1)
+                    if(length(spectrumListPlotTMP)>0){
+                      for(ispectrumListPlotTMP in 1:length(spectrumListPlotTMP)){
+                        addToPlot(folder=mrbin.env$mrbinparam$NMRfolders[
+                          spectrumListPlotTMP[ispectrumListPlotTMP]],
+                           dimension=mrbin.env$mrbinparam$dimension,
+                           NMRvendor=mrbin.env$mrbinparam$NMRvendor,
+                           useAsNames=mrbin.env$mrbinparam$useAsNames)
+                      }
+                    }
                   } else {
                     readNMR2(onlyTitles=TRUE)
                   }
@@ -459,8 +505,9 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                       while(!accept&!stopTMP){
                         binRegionText<-paste(paste(c("left=","ppm, right=","ppm, top=","ppm, bottom=")[1:dimlength],
                                           mrbin.env$mrbinparam$binRegion[1:dimlength],collapse="",sep=""),"ppm",sep="")
-                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region="all",rectangleRegions=matrix(mrbin.env$mrbinparam$binRegion,ncol=4),color="black",
-                                manualScale=FALSE,
+                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region="all",
+                                rectangleRegions=matrix(mrbin.env$mrbinparam$binRegion,ncol=4),
+                                color="black",manualScale=FALSE,
                                 plotTitle=paste("Bin region\n",binRegionText,
                                 sep=""))
                         adjRegion<-utils::select.list(c(paste("Keep: ",binRegionText,collapse=""),
@@ -514,28 +561,47 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
               addbinRegion<-""
               if(mrbin.env$mrbinparam$dimension=="1D"&!stopTMP&mrbin.env$mrbinparam$binMethod=="Rectangular bins"){
                   if(mrbin.env$mrbinparam$verbose){
-                    message("Hint: Should exceed peak size, and include at least 3 data points")
+                    message("Hint: Should be broader than a single peak and include some margin")
                     utils::flush.console()
                   }
                   accept<-FALSE
                   widthAdjust<-""
                   while(!accept&!stopTMP&!widthAdjust=="Go back"){
-                    if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=c(1.5,1.15,16.5,27),
-                            rectangleRegions=matrix(c(1.35+as.numeric(mrbin.env$mrbinparam$binwidth1D),
-                                                    1.35,21,21+1),ncol=4),
+                    #regionViewTMP<-c(1.5,1.15,16.5,27)
+                    if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=mrbin.env$mrbinparam$previewRegion1D,
+                            rectangleRegions=matrix(c((mrbin.env$mrbinparam$previewRegion1D[1]+
+                              mrbin.env$mrbinparam$previewRegion1D[2])/2+as.numeric(mrbin.env$mrbinparam$binwidth1D)/2,
+                              (mrbin.env$mrbinparam$previewRegion1D[1]+
+                              mrbin.env$mrbinparam$previewRegion1D[2])/2-as.numeric(mrbin.env$mrbinparam$binwidth1D)/2,
+                              21,21+1),ncol=4),
                             color="black", showGrid=TRUE,
                             manualScale=FALSE,
                             plotTitle=paste("Bin size\nwidth=",mrbin.env$mrbinparam$binwidth1D,"ppm",
                             sep=""))
                     binWidthTitle<-paste("Keep: width=",mrbin.env$mrbinparam$binwidth1D,"ppm",sep="")
-                    widthAdjust<-utils::select.list(c(binWidthTitle,"Change...","Go back"),
+                    widthAdjust<-utils::select.list(c(binWidthTitle,"Change...",
+                       "Show different part of spectrum...","Go back"),
                                  preselect=binWidthTitle,
                                  title ="Bin width [ppm]: ",graphics=TRUE)
                     if(length(widthAdjust)==0|widthAdjust=="") stopTMP<-TRUE
+                    if(widthAdjust=="Show different part of spectrum..."){
+                         widthTMP<-readline(prompt=paste("New left border, press enter to keep ",
+                                   mrbin.env$mrbinparam$previewRegion1D[1],": ",sep=""))
+                         if(!widthTMP==""&!is.na(as.numeric(widthTMP))) {
+                             #mrbin.env$paramChangeFlag<-TRUE
+                             mrbin.env$mrbinparam$previewRegion1D[1]<-as.numeric(widthTMP)
+                         }
+                         widthTMP<-readline(prompt=paste("New right border, press enter to keep ",
+                                   mrbin.env$mrbinparam$previewRegion1D[2],": ",sep=""))
+                         if(!widthTMP==""&!is.na(as.numeric(widthTMP))) {
+                             #mrbin.env$paramChangeFlag<-TRUE
+                             mrbin.env$mrbinparam$previewRegion1D[2]<-as.numeric(widthTMP)
+                         }
+                    }
                     if(widthAdjust=="Change..."){
                          widthTMP<-readline(prompt=paste("New 1D bin width, press enter to keep ",
                                    mrbin.env$mrbinparam$binwidth1D,": ",sep=""))
-                         if(!widthTMP=="") {
+                         if(!widthTMP==""&!is.na(as.numeric(widthTMP))) {
                              mrbin.env$paramChangeFlag<-TRUE
                              mrbin.env$mrbinparam$binwidth1D<-as.numeric(widthTMP)
                          }
@@ -549,26 +615,60 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
               }
               if(mrbin.env$mrbinparam$dimension=="2D"&!stopTMP&mrbin.env$mrbinparam$binMethod=="Rectangular bins"){
                   if(mrbin.env$mrbinparam$verbose){
-                    message("Hint: Should exceed peak size, and include at least 3x3 data points")
+                    message("Hint: Should be broader than a single peak and include some margin")
                     utils::flush.console()
                   }
                   accept<-FALSE
                   widthAdjust<-""
                   #heightAdjust<-""
                   while(!accept&!stopTMP&!widthAdjust=="Go back"){
-                    if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=c(2,1,16.5,27),
-                            rectangleRegions=matrix(c(1.5+as.numeric(mrbin.env$mrbinparam$binwidth2D),
-                                                    1.5,21,21+mrbin.env$mrbinparam$binheight),ncol=4),
+                    if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=mrbin.env$mrbinparam$previewRegion2D,
+                            rectangleRegions=matrix(c((mrbin.env$mrbinparam$previewRegion2D[1]+
+                              mrbin.env$mrbinparam$previewRegion2D[2])/2+as.numeric(mrbin.env$mrbinparam$binwidth2D)/2,
+                              (mrbin.env$mrbinparam$previewRegion2D[1]+
+                              mrbin.env$mrbinparam$previewRegion2D[2])/2-as.numeric(mrbin.env$mrbinparam$binwidth2D)/2,
+                              (mrbin.env$mrbinparam$previewRegion2D[3]+
+                              mrbin.env$mrbinparam$previewRegion2D[4])/2+as.numeric(mrbin.env$mrbinparam$binheight)/2,
+                              (mrbin.env$mrbinparam$previewRegion2D[3]+
+                              mrbin.env$mrbinparam$previewRegion2D[4])/2-as.numeric(mrbin.env$mrbinparam$binheight)/2
+                              ),ncol=4),
                             color="black",manualScale=FALSE, showGrid=TRUE,
                             plotTitle=paste("Bin size\nwidth=",mrbin.env$mrbinparam$binwidth2D,
                                       "ppm, height=",mrbin.env$mrbinparam$binheight,"ppm",sep=""))
                     currentBinSize<-paste("Keep: width=",mrbin.env$mrbinparam$binwidth2D,
                                       "ppm, height=",mrbin.env$mrbinparam$binheight,"ppm",sep="")
-                    widthAdjust<-utils::select.list(c(currentBinSize,"Change...","Go back"),
+                    widthAdjust<-utils::select.list(c(currentBinSize,"Change...",
+                      "Show different part of spectrum...","Go back"),
                                  preselect=currentBinSize,
                                  title ="Bin size [ppm]: ",graphics=TRUE)
                     if(length(widthAdjust)==0|widthAdjust=="") stopTMP<-TRUE
                     if(widthAdjust==currentBinSize) accept<-TRUE
+                    if(widthAdjust=="Show different part of spectrum..."){
+                         widthTMP<-readline(prompt=paste("New left border, press enter to keep ",
+                                   mrbin.env$mrbinparam$previewRegion2D[1],": ",sep=""))
+                         if(!widthTMP==""&!is.na(as.numeric(widthTMP))) {
+                             #mrbin.env$paramChangeFlag<-TRUE
+                             mrbin.env$mrbinparam$previewRegion2D[1]<-as.numeric(widthTMP)
+                         }
+                         widthTMP<-readline(prompt=paste("New right border, press enter to keep ",
+                                   mrbin.env$mrbinparam$previewRegion2D[2],": ",sep=""))
+                         if(!widthTMP==""&!is.na(as.numeric(widthTMP))) {
+                             #mrbin.env$paramChangeFlag<-TRUE
+                             mrbin.env$mrbinparam$previewRegion2D[2]<-as.numeric(widthTMP)
+                         }
+                         widthTMP<-readline(prompt=paste("New top border, press enter to keep ",
+                                   mrbin.env$mrbinparam$previewRegion2D[3],": ",sep=""))
+                         if(!widthTMP==""&!is.na(as.numeric(widthTMP))) {
+                             #mrbin.env$paramChangeFlag<-TRUE
+                             mrbin.env$mrbinparam$previewRegion2D[3]<-as.numeric(widthTMP)
+                         }
+                         widthTMP<-readline(prompt=paste("New bottom border, press enter to keep ",
+                                   mrbin.env$mrbinparam$previewRegion2D[4],": ",sep=""))
+                         if(!widthTMP==""&!is.na(as.numeric(widthTMP))) {
+                             #mrbin.env$paramChangeFlag<-TRUE
+                             mrbin.env$mrbinparam$previewRegion2D[4]<-as.numeric(widthTMP)
+                         }
+                    }
                     if(widthAdjust=="Change..."){
                          widthTMP<-readline(prompt=paste("New 2D bin width, press enter to keep ",
                                    mrbin.env$mrbinparam$binwidth2D,": ",sep=""))
@@ -618,7 +718,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                   editbinRegionYes<-"Edit previous bin list"
                   keepbinRegionIndex<-c(1,4)
                 }
-                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region="all",rectangleRegions=mrbin.env$mrbinparam$specialBinList,color="black",
+                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region="all",rectangleRegions=mrbin.env$mrbinparam$specialBinList,color="black",
                         manualScale=FALSE,rectangleColors="green",
                         plotTitle=paste("Bin regions\n",
                         sep=""))
@@ -636,7 +736,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                 if(!stopTMP){
                   if(adjbinRegionSelect=="Create new bin list"|adjbinRegionSelect==editbinRegionYes){
                     if(mrbin.env$mrbinparam$verbose){
-                      message("Hint: Should exceed peak size, and include at least 3 data points")
+                      message("Hint: Should be broader than a single peak and include some margin")
                       utils::flush.console()
                     }
                     #for(ibinRegions in 1:nrow(mrbin.env$mrbinparam$specialBinList)){
@@ -682,7 +782,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                           }
                           if(mrbin.env$mrbinparam$dimension=="1D"){
                             if(!range1==0){
-                              if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=regionTMP,
+                              if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=regionTMP,
                                       rectangleRegions=matrix(c(mrbin.env$mrbinparam$specialBinList[ibinRegions,1],
                                                               mrbin.env$mrbinparam$specialBinList[ibinRegions,2],0,2),ncol=4),
                                       color="black", showGrid=showGridTMP,manualScale=FALSE,
@@ -692,7 +792,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                           }
                           if(mrbin.env$mrbinparam$dimension=="2D"){
                             if(!range1==0&!range2==0){
-                              if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=regionTMP,
+                              if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=regionTMP,
                                       rectangleRegions=matrix(mrbin.env$mrbinparam$specialBinList[ibinRegions,1:4],ncol=4),
                                       color="black",manualScale=FALSE, showGrid=showGridTMP,
                                       plotTitle=paste("Custom bins\nleft=",mrbin.env$mrbinparam$specialBinList[ibinRegions,1],
@@ -817,11 +917,10 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                     while(!accept&!stopTMP&!adjRegion=="Go back"){
                       mean1<-mean(mrbin.env$mrbinparam$reference1D)
                       range1<-max(mrbin.env$mrbinparam$reference1D)-min(mrbin.env$mrbinparam$reference1D)
-                      if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=c(mean1+4*range1,mean1-4*range1,-10,10),
+                      if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=c(mean1+4*range1,mean1-4*range1,-10,10),
                               rectangleRegions=matrix(c(mrbin.env$mrbinparam$reference1D[1],
                                                       mrbin.env$mrbinparam$reference1D[2],0,2),ncol=4),
-                              color="black",
-                              manualScale=FALSE,
+                              color="black",manualScale=FALSE,restrictToRange=TRUE,
                               plotTitle=paste("Reference region\nleft=",mrbin.env$mrbinparam$reference1D[1],
                                         "ppm, right=",mrbin.env$mrbinparam$reference1D[2],"ppm",sep=""))
                       RefRegionTitle<-paste("Keep: left=",mrbin.env$mrbinparam$reference1D[1],
@@ -855,11 +954,10 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                         range1<-max(mrbin.env$mrbinparam$reference2D[1:2])-min(mrbin.env$mrbinparam$reference2D[1:2])
                         mean2<-mean(mrbin.env$mrbinparam$reference2D[3:4])
                         range2<-max(mrbin.env$mrbinparam$reference2D[3:4])-min(mrbin.env$mrbinparam$reference2D[3:4])
-                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=c(mean1+4*range1,mean1-4*range1,
+                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=c(mean1+4*range1,mean1-4*range1,
                                          mean2-4*range2,mean2+4*range2),
                                 rectangleRegions=matrix(mrbin.env$mrbinparam$reference2D,ncol=4),
-                                color="black",
-                                manualScale=FALSE,
+                                color="black",manualScale=FALSE,restrictToRange=TRUE,
                                 plotTitle=paste("Reference region\nleft=",mrbin.env$mrbinparam$reference2D[1],
                                           "ppm, right=",mrbin.env$mrbinparam$reference2D[2],
                                           "ppm, top=",mrbin.env$mrbinparam$reference2D[3],
@@ -929,11 +1027,10 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                     while(!accept&!stopTMP&!adjRegion=="Go back"){
                       mean1<-mean(mrbin.env$mrbinparam$solventRegion[1:2])
                       range1<-max(mrbin.env$mrbinparam$solventRegion[1:2])-min(mrbin.env$mrbinparam$solventRegion[1:2])
-                      if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=c(mean1+6*range1,mean1-6*range1,-10,160),
+                      if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=c(mean1+6*range1,mean1-6*range1,-10,160),
                               rectangleRegions=matrix(c(mrbin.env$mrbinparam$solventRegion[1],
                                                       mrbin.env$mrbinparam$solventRegion[2],-1000,1000),ncol=4),
-                              color="black",
-                              manualScale=FALSE,
+                              color="black",manualScale=FALSE,restrictToRange=TRUE,
                               plotTitle=paste("Solvent region\nleft=",mrbin.env$mrbinparam$solventRegion[1],
                                         "ppm, right=",mrbin.env$mrbinparam$solventRegion[2],"ppm",sep=""))
                       SolventRegionTitle<-paste("Keep: left=",mrbin.env$mrbinparam$solventRegion[1],
@@ -1010,7 +1107,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                        preselectKeepTMPYes<-"Create new list"
                        keepbinRegionIndex<-c(1,4)
                     }
-                    if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region="all",rectangleRegions=mrbin.env$mrbinparam$removeAreaList,color="black",
+                    if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region="all",rectangleRegions=mrbin.env$mrbinparam$removeAreaList,color="black",
                             manualScale=FALSE,rectangleColors="green",
                             plotTitle=paste("Removed areas\n",
                             sep=""))
@@ -1063,7 +1160,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                               regionTMP<-c(mean1+4*range1,mean1-4*range1,mean2-4*range2,mean2+4*range2)
                               if(sum(mrbin.env$mrbinparam$removeAreaList[ibinRegions,]==0)==4) regionTMP<-"all"
                               if(mrbin.env$mrbinparam$dimension=="1D"){
-                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=regionTMP,
+                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=regionTMP,
                                         rectangleRegions=matrix(c(mrbin.env$mrbinparam$removeAreaList[ibinRegions,1],
                                                                 mrbin.env$mrbinparam$removeAreaList[ibinRegions,2],0,2),ncol=4),
                                         color="black",
@@ -1072,7 +1169,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                                                   "ppm, right=",mrbin.env$mrbinparam$removeAreaList[ibinRegions,2],"ppm",sep=""))
                               }
                               if(mrbin.env$mrbinparam$dimension=="2D"){
-                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=regionTMP,
+                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=regionTMP,
                                         rectangleRegions=matrix(mrbin.env$mrbinparam$removeAreaList[ibinRegions,1:4],ncol=4),
                                         color="black",
                                         manualScale=FALSE,
@@ -1208,7 +1305,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                         preselectKeepTMPYes<-"Create new list"
                         keepbinRegionIndex<-c(1,4)
                       }
-                      if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region="all",rectangleRegions=mrbin.env$mrbinparam$sumBinList,color="black",
+                      if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region="all",rectangleRegions=mrbin.env$mrbinparam$sumBinList,color="black",
                               manualScale=FALSE,rectangleColors="green",
                               plotTitle=paste("Summed areas\n",
                               sep=""))
@@ -1262,7 +1359,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                               regionTMP<-c(mean1+4*range1,mean1-4*range1,mean2-4*range2,mean2+4*range2)
                               if(sum(mrbin.env$mrbinparam$sumBinList[ibinRegions,]==0)==4) regionTMP<-"all"
                               if(mrbin.env$mrbinparam$dimension=="1D"){
-                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=regionTMP,
+                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=regionTMP,
                                         rectangleRegions=matrix(c(mrbin.env$mrbinparam$sumBinList[ibinRegions,1],
                                                                 mrbin.env$mrbinparam$sumBinList[ibinRegions,2],0,2),ncol=4),
                                         color="black",
@@ -1271,7 +1368,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                                                   "ppm, right=",mrbin.env$mrbinparam$sumBinList[ibinRegions,2],"ppm",sep=""))
                               }
                               if(mrbin.env$mrbinparam$dimension=="2D"){
-                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region=regionTMP,
+                                if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region=regionTMP,
                                         rectangleRegions=matrix(mrbin.env$mrbinparam$sumBinList[ibinRegions,1:4],ncol=4),
                                         color="black",
                                         manualScale=FALSE,
@@ -1378,7 +1475,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                       utils::flush.console()
                     }
                     if(mrbin.env$mrbinparam$dimension=="1D"){
-                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(#region=regionTMP,
+                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(#region=regionTMP,
                                 rectangleRegions=matrix(c(mrbin.env$mrbinparam$noiseRange1d,-1000,1000),ncol=4),
                                 color="black",
                                 manualScale=FALSE,
@@ -1387,7 +1484,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                         adjNoiseRegionAccept<-paste(paste(c("Keep left=","ppm, right=","ppm, top=","ppm, bottom=")[1:dimlength],
                                           mrbin.env$mrbinparam$noiseRange1d,collapse="",sep=""),"ppm",sep="")
                       } else {
-                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(#region=regionTMP,
+                        if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(#region=regionTMP,
                                 rectangleRegions=matrix(mrbin.env$mrbinparam$noiseRange2d,ncol=4),
                                 color="black",
                                 manualScale=FALSE,
@@ -1526,7 +1623,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                    message("Hint: This removes additional noise")
                    utils::flush.console()
                  }
-                 if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotNMR(region="all",
+                 if(mrbin.env$mrbinparam$showSpectrumPreview=="Yes") plotMultiNMR(region="all",
                         polygonRegion=matrix(c(mrbin.env$mrbinparam$croptopRight,
                                       mrbin.env$mrbinparam$croptopLeft,
                                       mrbin.env$mrbinparam$cropbottomLeft,
@@ -1549,25 +1646,26 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
               if(!stopTMP) selectStep<-selectStep+1
             }
             if(selectStep==12){
+              selectStep<-selectStep+1
               #Trim zeros
-              if(!stopTMP){
-                if(mrbin.env$mrbinparam$verbose){
-                  message("Hint: Recommended after removing solvents or noise")
-                  utils::flush.console()
-                }
-                trimZeros<-utils::select.list(c("Yes","No","Go back"),
-                                         preselect=mrbin.env$mrbinparam$trimZeros,
-                                         title="Trim zero-value bins?",graphics=TRUE)
-                if(length(trimZeros)==0|trimZeros=="") stopTMP<-TRUE
-                if(!stopTMP&!trimZeros=="Go back"){
-                  mrbin.env$mrbinparam$trimZeros<-trimZeros
-                }
-                if(trimZeros=="Go back"&!stopTMP){
-                   if(mrbin.env$mrbinparam$dimension=="2D") selectStep<-selectStep-2
-                   if(mrbin.env$mrbinparam$dimension=="1D") selectStep<-selectStep-3
-                }
-                if(!stopTMP) selectStep<-selectStep+1
-              }
+              #if(!stopTMP){
+              #  if(mrbin.env$mrbinparam$verbose){
+              #    message("Hint: Recommended after removing solvents or noise")
+              #    utils::flush.console()
+              #  }
+              #  trimZeros<-utils::select.list(c("Yes","No","Go back"),
+              #                           preselect=mrbin.env$mrbinparam$trimZeros,
+              #                           title="Trim zero-value bins?",graphics=TRUE)
+              #  if(length(trimZeros)==0|trimZeros=="") stopTMP<-TRUE
+              #  if(!stopTMP&!trimZeros=="Go back"){
+              #    mrbin.env$mrbinparam$trimZeros<-trimZeros
+              #  }
+              #  if(trimZeros=="Go back"&!stopTMP){
+              #     if(mrbin.env$mrbinparam$dimension=="2D") selectStep<-selectStep-2
+              #     if(mrbin.env$mrbinparam$dimension=="1D") selectStep<-selectStep-3
+              #  }
+              #  if(!stopTMP) selectStep<-selectStep+1
+              #}
             }
             if(selectStep==13){
               #PQN scaling?
@@ -1917,6 +2015,11 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
        printParameters()
    }
    if(startmrbin=="Start binning now"){
+     #Check if files or folders exist first to avoid long waiting times
+     for(iCheckFiles in 1:length(mrbin.env$mrbinparam$NMRfolders)){
+       readNMR(folder=mrbin.env$mrbinparam$NMRfolders[iCheckFiles],
+         dimension=mrbin.env$mrbinparam$dimension,checkFiles=TRUE)
+     }
      mrbinrun()
      invisible(list(bins=mrbin.env$bins,factors=mrbin.env$mrbinparam$Factors,parameters=mrbin.env$mrbinparam))
    }
@@ -1936,10 +2039,12 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
 #' @return {None}
 #' @export
 #' @examples
-#' setParam(parameters=list(dimension="2D",binwidth2D=0.05,binheight=3,PQNScaling="No",
-#'          fixNegatives="No",logTrafo="No",signal_to_noise2D=20,
-#'          NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
-#'                       system.file("extdata/2/12/pdata/10",package="mrbin"))))
+#' resetEnv()
+#' setParam(parameters=list(dimension="2D",binwidth2D=0.1,binheight=4,
+#'    binRegion=c(8,1,15,140),PQNScaling="No",
+#'    fixNegatives="No",logTrafo="No",signal_to_noise2D=10,solventRegion=c(5.5,4.2),
+#'    NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
+#'                 system.file("extdata/2/12/pdata/10",package="mrbin"))))
 #' mrbinrun()
 
 mrbinrun<-function(){
@@ -1979,14 +2084,6 @@ mrbinrun<-function(){
       dput(mrbin.env$mrbinparam, file = paste(mrbin.env$mrbinparam$outputFileName,".txt",sep=""))
       utils::write.csv(mrbin.env$bins, file = paste(mrbin.env$mrbinparam$outputFileName,"bins.csv",sep=""))
     }
-    if(mrbin.env$mrbinparam$PCA=="Yes"){
-      readNMR2()
-      plotResults()
-      if(mrbin.env$mrbinparam$saveFiles=="Yes"){
-        grDevices::dev.copy(pdf,paste(mrbin.env$mrbinparam$outputFileName,"plot.pdf",sep=""))
-        grDevices::dev.off()
-      }
-    }
      mrbin.env$paramChangeFlag<-FALSE
      mrbin.env$mrbinparam$createBins<-"Yes"
      resultOutputTMP<-c("\nNumber of spectra: ",nrow(mrbin.env$bins),"\n",
@@ -2019,7 +2116,35 @@ mrbinrun<-function(){
      if(mrbin.env$mrbinparam$verbose){
        #printParameters()
        message(resultOutputTMP, appendLF = FALSE)
+       utils::flush.console()
      }
+    if(mrbin.env$mrbinparam$PCA=="Yes"){
+      #readNMR2()
+      mrbin.env$mrbinTMP$additionalPlots1D<-NULL
+      mrbin.env$mrbinTMP$additionalPlots1DMetadata<-NULL
+      mrbin.env$mrbinTMP$additionalPlots2D<-NULL
+      mrbin.env$mrbinTMP$additionalPlots2DMetadata<-NULL
+      #Find 3 more spectra: 33 percentile, 66 percentile, last spectrum
+      spectrumListPlotTMP<-setdiff(unique(c(
+        ceiling(length(mrbin.env$mrbinparam$NMRfolders)*.33),
+        ceiling(length(mrbin.env$mrbinparam$NMRfolders)*.66),
+        length(mrbin.env$mrbinparam$NMRfolders))),1)
+      if(length(spectrumListPlotTMP)>0){
+        for(ispectrumListPlotTMP in 1:length(spectrumListPlotTMP)){
+          addToPlot(folder=mrbin.env$mrbinparam$NMRfolders[
+            spectrumListPlotTMP[ispectrumListPlotTMP]],
+             dimension=mrbin.env$mrbinparam$dimension,
+             NMRvendor=mrbin.env$mrbinparam$NMRvendor,
+             useAsNames=mrbin.env$mrbinparam$useAsNames)
+        }
+      }
+      #readNMR2()
+      plotResults()
+      #if(mrbin.env$mrbinparam$saveFiles=="Yes"){
+      #  grDevices::dev.copy(pdf,paste(mrbin.env$mrbinparam$outputFileName,"plot.pdf",sep=""))
+      #  grDevices::dev.off()
+      #}
+    }
   }
 }
 
@@ -2267,7 +2392,7 @@ setParam<-function(parameters=NULL){
            sep=""))
     }
     if(length(diffSet3)>0){
-       if(mrbin.env$mrbinparam$verbose) message(paste("Current values are used for missing parameters: ",
+       if(mrbin.env$mrbinparam$verbose) message(paste("Default values are used for missing parameters: ",
            paste(diffSet3,sep=", ", collapse=", "),"\n",sep=""), appendLF = FALSE)
     }
     if(length(intersectSet)>0){
@@ -2291,6 +2416,7 @@ setParam<-function(parameters=NULL){
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' mrbinExample<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D", logTrafo="No",
 #'                     binwidth1D=0.05,signal_to_noise1D=50, verbose=TRUE, PCA="No",
 #'                     NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
@@ -2713,7 +2839,8 @@ binMultiNMR<-function(){
           noiseRange1d=mrbin.env$mrbinparam$noiseRange1d,
           noiseRange2d=mrbin.env$mrbinparam$noiseRange2d,
           binMethod=mrbin.env$mrbinparam$binMethod,
-          useAsNames=mrbin.env$mrbinparam$useAsNames
+          useAsNames=mrbin.env$mrbinparam$useAsNames,
+          useMeanIntensityForBins=mrbin.env$mrbinparam$useMeanIntensityForBins
         )
       ,silent=TRUE)
       try(parallel::stopCluster(cluster),silent=TRUE)
@@ -2743,7 +2870,8 @@ binMultiNMR<-function(){
         noiseRange1d=mrbin.env$mrbinparam$noiseRange1d,
         noiseRange2d=mrbin.env$mrbinparam$noiseRange2d,
         binMethod=mrbin.env$mrbinparam$binMethod,
-        useAsNames=mrbin.env$mrbinparam$useAsNames
+        useAsNames=mrbin.env$mrbinparam$useAsNames,
+        useMeanIntensityForBins=mrbin.env$mrbinparam$useMeanIntensityForBins
         )
     }
     if(mrbin.env$mrbinparam$verbose) message("done.\n", appendLF = FALSE)
@@ -2938,6 +3066,121 @@ readNMR2<-function(onlyTitles=FALSE){#Read NMR spectral data
    mrbin.env$mrbinTMP$currentSpectrumFolderName_EXPNO<-NMRdataList$currentSpectrumFolderName_EXPNO
    mrbin.env$mrbinTMP$currentSpectrumName<-NMRdataList$currentSpectrumName
 }
+
+#' A function for adding NMR spectra to the plot list.
+#'
+#' This function adds a sepctrum to the plot list.
+#' @param folder Defines the exact NMR data folder. If NULL, mrbin parameter set is used
+#' @param dimension Defines the data dimension, "1D" or "2D". Only used if not NULL
+#' @param NMRvendor Defines the NMR manufacturer, default is "Bruker"
+#' @param useAsNames How should sample names be generated
+#' @return {none}
+#' @export
+#' @examples
+#' \donttest{ addToPlot() }
+
+addToPlot<-function(folder=NULL,
+           dimension="1D",
+           NMRvendor="Bruker",
+           useAsNames="Folder names"){#Read NMR spectral data
+   NMRdataList<-readNMR(folder=folder,
+           dimension=dimension,
+           NMRvendor=NMRvendor,
+           useAsNames=useAsNames)
+   if(dimension=="1D"){
+     if( is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
+       mrbin.env$mrbinTMP$additionalPlots1D<-list(NMRdataList$currentSpectrum)
+     } else {
+       mrbin.env$mrbinTMP$additionalPlots1D[[
+         length(mrbin.env$mrbinTMP$additionalPlots1D)+1]]<-NMRdataList$currentSpectrum
+     }
+     mrbin.env$mrbinTMP$additionalPlots1DMetadata<-rbind(
+       mrbin.env$mrbinTMP$additionalPlots1DMetadata,
+       c(folder,
+         NMRdataList$currentSpectrumTitle,
+         NMRdataList$currentSpectrumFolderName,
+         NMRdataList$currentSpectrumEXPNO,
+         NMRdataList$currentSpectrumFolderName_EXPNO,
+         NMRdataList$currentSpectrumName,
+         1,#This is a scaling factor
+         setdiff(unique(c(grDevices::colors()[c(552,26,547,81,498)],
+           grDevices::colors())),c("white","black",
+           mrbin.env$mrbinTMP$additionalPlots1DMetadata[,8]))[1],#new color
+         0,#offset
+         FALSE#hide this spectrum
+         ))
+   }
+   if(dimension=="2D"){
+     if( is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
+       mrbin.env$mrbinTMP$additionalPlots2D<-list(NMRdataList$currentSpectrum)
+     } else {
+       mrbin.env$mrbinTMP$additionalPlots2D[[
+         length(mrbin.env$mrbinTMP$additionalPlots2D)+1]]<-NMRdataList$currentSpectrum
+     }
+     mrbin.env$mrbinTMP$additionalPlots2DMetadata<-rbind(
+       mrbin.env$mrbinTMP$additionalPlots2DMetadata,
+       c(folder,
+         NMRdataList$currentSpectrumTitle,
+         NMRdataList$currentSpectrumFolderName,
+         NMRdataList$currentSpectrumEXPNO,
+         NMRdataList$currentSpectrumFolderName_EXPNO,
+         NMRdataList$currentSpectrumName,
+         1,#This is a scaling factor
+         setdiff(unique(c(grDevices::colors()[c(552,26,547,81,498)],
+           grDevices::colors())),c("white","black",
+           mrbin.env$mrbinTMP$additionalPlots2DMetadata[,8]))[1],#new color
+         0,#offset
+         FALSE#hide this spectrum
+         ))
+   }
+}
+
+
+#' A function for removing NMR spectra from the plot list.
+#'
+#' This function removes a sepctrum from the plot list.
+#' @param folder Defines the exact NMR data folder.
+#' @param dimension Defines the data dimension, "1D" or "2D".
+#' @return {none}
+#' @export
+#' @examples
+#' \donttest{ removeFromPlot() }
+
+removeFromPlot<-function(folder=NULL,
+           dimension="1D"){#
+   if(dimension=="1D"){
+     if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
+       if(folder%in%mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]){
+         if(nrow(mrbin.env$mrbinTMP$additionalPlots1DMetadata)==1){
+            mrbin.env$mrbinTMP$additionalPlots1DMetadata<-NULL
+            mrbin.env$mrbinTMP$additionalPlots1D<-NULL
+         } else {
+           deleteTMP<-which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==folder)
+           mrbin.env$mrbinTMP$additionalPlots1D[[deleteTMP]]<-NULL
+           mrbin.env$mrbinTMP$additionalPlots1DMetadata<-
+             mrbin.env$mrbinTMP$additionalPlots1DMetadata[-deleteTMP,,drop=FALSE]
+         }
+       }
+     }
+   }
+   if(dimension=="2D"){
+     if(!is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
+       if(folder%in%mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]){
+         if(nrow(mrbin.env$mrbinTMP$additionalPlots2DMetadata)==1){
+            mrbin.env$mrbinTMP$additionalPlots2DMetadata<-NULL
+            mrbin.env$mrbinTMP$additionalPlots2D<-NULL
+         } else {
+           deleteTMP<-which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==folder)
+           mrbin.env$mrbinTMP$additionalPlots2D[[deleteTMP]]<-NULL
+           mrbin.env$mrbinTMP$additionalPlots2DMetadata<-
+             mrbin.env$mrbinTMP$additionalPlots2DMetadata[-deleteTMP,,drop=FALSE]
+         }
+       }
+     }
+   }
+}
+
+
 
 
 #' A function for summing bins.
@@ -3227,6 +3470,7 @@ checkBaseline<-function(NMRdata=NULL,dimension="1D",currentSpectrumName=NULL,
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' Example<-mrbin(silent=TRUE,
 #'          parameters=list(dimension="2D",binwidth2D=1,binheight=4,cropHSQC="No",PCA="No",
 #'          PQNScaling="No",noiseRemoval="No",removeSolvent="No",verbose=TRUE,
@@ -3422,12 +3666,11 @@ PQNScaling<-function(NMRdata=NULL,ignoreGlucose="Yes",dimension="1D",
 #' @export
 #' @examples
 #' mrbinExample<-mrbin(silent=TRUE,setDefault=FALSE,parameters=list(dimension="2D",
-#'                     binwidth2D=0.05,binheight=3,
-#'                     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",
-#'                     fixNegatives="No",logTrafo="No",PCA="No",
-#'                     NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
-#'                                 system.file("extdata/2/12/pdata/10",package="mrbin"),
-#'                                 system.file("extdata/3/12/pdata/10",package="mrbin"))))
+#'     binRegion=c(8,1,15,140),binwidth2D=0.1,binheight=4,solventRegion=c(5.5,4.2),
+#'     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",
+#'     fixNegatives="No",logTrafo="No",PCA="No",signal_to_noise2D=10,
+#'     NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
+#'                  system.file("extdata/2/12/pdata/10",package="mrbin"))))
 #' plotResults()
 
 plotResults<-function(){
@@ -3439,21 +3682,28 @@ plotResults<-function(){
     }
     colorPalette<-grDevices::rainbow(length(levels(FactorsTMP)))
     mrbin.env$mrbinTMP$PCA<-stats::prcomp(mrbin.env$bins)
+    #first write plot to object, then plot object (speed!)
+    if(mrbin.env$mrbinparam$saveFiles=="Yes"){
+      grDevices::pdf(paste(mrbin.env$mrbinparam$outputFileName,"plot.pdf",sep=""))
+    } else {
+      grDevices::pdf(NULL)
+    }
+    grDevices::dev.control(displaylist="enable")
     oldpar<-graphics::par("mar","mfrow","mgp")
     on.exit(graphics::par(oldpar))
     devAskNewPage(ask = FALSE)
     graphics::par(mfrow=c(2,3),mar=c(3.1,2,2,0.5))
     if(mrbin.env$mrbinparam$dimension=="1D"){
-      plotNMR(rectangleRegions=mrbin.env$mrbinTMP$binRegions,
+      plotMultiNMR(rectangleRegions=mrbin.env$mrbinTMP$binRegions,
           color="black",rectangleColors="green", rectangleFront=FALSE,
           manualScale=FALSE,
-          plotTitle="")
+          plotTitle="Bin Regions")
     }
     if(mrbin.env$mrbinparam$dimension=="2D"){
-      plotNMR(rectangleRegions=mrbin.env$mrbinTMP$binRegions,
+      plotMultiNMR(rectangleRegions=mrbin.env$mrbinTMP$binRegions,
           color="darkgray",rectangleColors="blue", rectangleFront=TRUE,
           manualScale=FALSE,
-          plotTitle="")
+          plotTitle="Bin Regions")
     }
     axisCex1<-.1
     if(ncol(mrbin.env$bins)<100) axisCex1<-.25
@@ -3463,9 +3713,11 @@ plotResults<-function(){
     if(nrow(mrbin.env$bins)<100) axisCex2<-.25
     if(nrow(mrbin.env$bins)<25) axisCex2<-.5
     if(nrow(mrbin.env$bins)<15) axisCex2<-1
-    graphics::boxplot(mrbin.env$bins,main="",xlab="Bins",ylab="",boxwex=1,ask=FALSE,xaxt="n")
+    graphics::boxplot(mrbin.env$bins,main="Feature Intensities",xlab="Bins",
+      ylab="",boxwex=1,ask=FALSE,xaxt="n")
     graphics::axis(1,las=2,cex.axis=axisCex1,at=1:ncol(mrbin.env$bins),labels=colnames(mrbin.env$bins))
-    graphics::boxplot(t(mrbin.env$bins),main="",xlab="Samples",ylab="",boxwex=1,ask=FALSE,xaxt="n")
+    graphics::boxplot(t(mrbin.env$bins),main="Sample Intensities",
+      xlab="Samples",ylab="",boxwex=1,ask=FALSE,xaxt="n")
     graphics::axis(1,las=2,cex.axis=axisCex2,at=1:nrow(mrbin.env$bins),labels=substr(rownames(mrbin.env$bins),1,mrbin.env$mrbinparam$PCAtitlelength))
     utils::flush.console()
     if(nrow(mrbin.env$bins)>1){
@@ -3475,6 +3727,7 @@ plotResults<-function(){
         for(i in 1:nlevels(FactorsTMP)) numlevels<-c(numlevels,as.numeric(
                          FactorsTMP[which(FactorsTMP==levels(FactorsTMP)[i])][1]))
       }
+      numlevels2<-numlevels
       addTMP1<-.15*(max(mrbin.env$mrbinTMP$PCA$x[,1])-min(mrbin.env$mrbinTMP$PCA$x[,1]))
       xlimTMP<-c(min(mrbin.env$mrbinTMP$PCA$x[,1])-addTMP1,max(mrbin.env$mrbinTMP$PCA$x[,1])+addTMP1)
       addTMP1rot<-.25*(max(mrbin.env$mrbinTMP$PCA$rotation[,1])-min(mrbin.env$mrbinTMP$PCA$rotation[,1]))
@@ -3493,8 +3746,14 @@ plotResults<-function(){
       }
       if(mrbin.env$mrbinparam$defineGroups=="Yes"){
         PCAFactors<-as.numeric(FactorsTMP)
+        PCAFactors2<-PCAFactors+14
+        PCAFactors2[PCAFactors2>25]<-PCAFactors2[PCAFactors2>25]+7#pch 26 through 32 are missing
+        numlevels2<-numlevels2+14
+        numlevels2[numlevels2>25]<-numlevels2[numlevels2>25]+7#pch 26 through 32 are missing
       } else {
         PCAFactors<-rep(1,nrow(mrbin.env$bins))
+        PCAFactors2<-PCAFactors+14
+        numlevels2<-numlevels2+14
       }
       graphics::plot(mrbin.env$mrbinTMP$PCA$rotation,xlim=xlimTMProt,ylim=ylimTMProt,xlab="PC1",ylab="PC2",
                      pch=16,cex=.75,main="PCA Loadings Plot", ask=FALSE, xaxt='n', yaxt='n')
@@ -3504,7 +3763,8 @@ plotResults<-function(){
       graphics::plot(mrbin.env$mrbinTMP$PCA$x#[,1],mrbin.env$mrbinTMP$PCA$x[,2],
            ,xlim=xlimTMP,
            ylim=ylimTMP,
-           pch=PCAFactors+14, xaxt='n', yaxt='n',
+           pch=PCAFactors2,
+           xaxt='n', yaxt='n',
            col=colorPalette[PCAFactors],
            main="PCA",
            xlab=xlabTMP,
@@ -3512,14 +3772,19 @@ plotResults<-function(){
            cex=.75, ask=FALSE)
       graphics::text(mrbin.env$mrbinTMP$PCA$x,labels=paste(substr(rownames(mrbin.env$mrbinTMP$PCA$x),1,mrbin.env$mrbinparam$PCAtitlelength)),pos=3,cex=1,
              col=colorPalette[PCAFactors])
-      graphics::plot(NULL,NULL,xaxt="n",yaxt="n",ask=FALSE,axes=FALSE,xlim=c(0,1),ylim=c(0,1),xlab="",ylab="",main="")
+      graphics::plot(NULL,NULL,xaxt="n",yaxt="n",ask=FALSE,axes=FALSE,xlim=c(0,1),ylim=c(0,1),
+             xlab="",ylab="",main="")
       graphics::par(mar=c(4.2,0,2.8,0.5))
-      if(mrbin.env$mrbinparam$defineGroups=="Yes") graphics::legend("left", legend=levels(FactorsTMP),
-              col=colorPalette[numlevels],pch=numlevels+14,cex=1,bg="white")
+      if(mrbin.env$mrbinparam$defineGroups=="Yes") graphics::legend("left",
+              legend=levels(FactorsTMP),
+              col=colorPalette[numlevels],pch=numlevels2,cex=1,bg="white")
       utils::flush.console()
     } else {
        warning("Too few samples to perform PCA.")
     }
+    plotRecordingTMP<-grDevices::recordPlot()
+    invisible(grDevices::dev.off())
+    grDevices::replayPlot(plotRecordingTMP)
  }
 }
 
@@ -3540,6 +3805,8 @@ plotResults<-function(){
 #' @param manualScale If TRUE, scaling factor is taken from environment variables
 #' @param plotTitle Defines the main title of the plot
 #' @param showGrid Shows a grid of data points. Defaults to FALSE
+#' @param restrictToRange Restrict plot area to range of available data points. Defaults to FALSE
+#' @param currentSpectrumOriginal Optional spectral data. If omitted, data from the environment variables is used
 #' @return {None}
 #' @export
 #' @examples
@@ -3554,21 +3821,25 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
                    rectangleFront=FALSE,
                    polygonRegion=NULL,
                    color=NULL,add=FALSE,showGrid=FALSE,
-                   manualScale=TRUE,plotTitle=""){
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+                   manualScale=TRUE,plotTitle="",
+                   restrictToRange=FALSE,currentSpectrumOriginal=NULL){
+ if(is.null(currentSpectrumOriginal)){
+   currentSpectrumOriginal<-mrbin.env$mrbinTMP$currentSpectrumOriginal
+ }
+ if(!is.null(currentSpectrumOriginal)){
    devAskNewPage(ask = FALSE)
    if(is.null(region)){
        if(is.null(mrbin.env$mrbinplot$plotRegion)){
-            if(is.matrix(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+            if(is.matrix(currentSpectrumOriginal)){
                 mrbin.env$mrbinplot$plotRegion<-
-                          c(max(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                            min(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                            min(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                            max(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal))))
+                          c(max(as.numeric(colnames(currentSpectrumOriginal))),
+                            min(as.numeric(colnames(currentSpectrumOriginal))),
+                            min(as.numeric(rownames(currentSpectrumOriginal))),
+                            max(as.numeric(rownames(currentSpectrumOriginal))))
             } else {
                 mrbin.env$mrbinplot$plotRegion<-
-                         c(max(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                         min(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
+                         c(max(as.numeric(names(currentSpectrumOriginal))),
+                         min(as.numeric(names(currentSpectrumOriginal))),
                          -10,160)
             }
        }
@@ -3576,29 +3847,45 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
    }
    if(length(region)==1){
      if(region=="all"){
-          if(is.matrix(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
-                region<-c(max(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                            min(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                            min(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                            max(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal))))
+          if(is.matrix(currentSpectrumOriginal)){
+                region<-c(max(as.numeric(colnames(currentSpectrumOriginal))),
+                            min(as.numeric(colnames(currentSpectrumOriginal))),
+                            min(as.numeric(rownames(currentSpectrumOriginal))),
+                            max(as.numeric(rownames(currentSpectrumOriginal))))
           } else {
-                region<-c(max(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
-                         min(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal))),
+                region<-c(max(as.numeric(names(currentSpectrumOriginal))),
+                         min(as.numeric(names(currentSpectrumOriginal))),
                          -10,160)
           }
      }
    }
-   if(is.matrix(mrbin.env$mrbinTMP$currentSpectrumOriginal)){#2D spectra
+  if(restrictToRange){
+      if(is.matrix(currentSpectrumOriginal)){#2d spectra
+          region[1]<-min(region[1],max(as.numeric(colnames(currentSpectrumOriginal))))
+          region[2]<-max(region[2],min(as.numeric(colnames(currentSpectrumOriginal))))
+          region[3]<-max(region[3],min(as.numeric(rownames(currentSpectrumOriginal))))
+          region[4]<-min(region[4],max(as.numeric(rownames(currentSpectrumOriginal))))
+      } else {
+         region[1]<-min(region[1],max(as.numeric(names(currentSpectrumOriginal))))
+         region[2]<-max(region[2],min(as.numeric(names(currentSpectrumOriginal))))
+      }
+  }
+   if(is.matrix(currentSpectrumOriginal)){#2D spectra
       if(is.null(color)) color<-rev(grDevices::rainbow(mrbin.env$mrbinplot$nContours))
-      spectrumTMP<-mrbin.env$mrbinTMP$currentSpectrumOriginal[which(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal))<
+      TMP_1<-which(as.numeric(rownames(
+                         currentSpectrumOriginal))<
                            region[4]&
-                          as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal))>=region[3]),
-                         which(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal))>=region[2]&
-                         as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal))<region[1])
-                         ]
+                          as.numeric(rownames(currentSpectrumOriginal))>=region[3])
+      if(length(TMP_1)==0)  TMP_1<-1:nrow(currentSpectrumOriginal)
+      TMP_2<-which(as.numeric(colnames(currentSpectrumOriginal))>=region[2]&
+                         as.numeric(colnames(currentSpectrumOriginal))<region[1])
+      if(length(TMP_2)==0)  TMP_2<-1:ncol(currentSpectrumOriginal)
+      spectrumTMP<-currentSpectrumOriginal[TMP_1,TMP_2]
       if(manualScale){
-        if(sum(spectrumTMP<(mrbin.env$mrbinplot$lowestContour*max(mrbin.env$mrbinTMP$currentSpectrumOriginal)))>0){
-             spectrumTMP[spectrumTMP<(mrbin.env$mrbinplot$lowestContour*max(mrbin.env$mrbinTMP$currentSpectrumOriginal))]<-0
+        if(sum(spectrumTMP<(mrbin.env$mrbinplot$lowestContour*max(
+             currentSpectrumOriginal)))>0){
+             spectrumTMP[spectrumTMP<(mrbin.env$mrbinplot$lowestContour*max(
+             currentSpectrumOriginal))]<-0
         }
       } else {
         spectrumTMP[spectrumTMP<=0]<-1e-8
@@ -3656,7 +3943,7 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
                ,labels=-(0:100*magnitude2+floor(min(-as.numeric(colnames(spectrumTMP)))/magnitude2)*magnitude2)
                )
       }
-      if(!is.null(rectangleRegions)&!rectangleFront){
+      if(!add&!is.null(rectangleRegions)&!rectangleFront){
           graphics::rect(xleft=-rectangleRegions[,1], ybottom=-rectangleRegions[,4],
                          xright=-rectangleRegions[,2], ytop=-rectangleRegions[,3],
                          col = rectangleColors, border = NA)
@@ -3682,7 +3969,7 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
       }
       suppressWarnings(graphics::contour(x = -as.numeric(colnames(spectrumTMP)),
         y = -as.numeric(rownames(spectrumTMP)),
-        z = t(spectrumTMP)*mrbin.env$mrbinplot$intensityScale,
+        z = t(spectrumTMP)*mrbin.env$mrbinplot$intensityScale2D,
         levels =  (mrbin.env$mrbinplot$lowestContour+
                       .8*(1:mrbin.env$mrbinplot$nContours-1)/
                       (mrbin.env$mrbinplot$nContours)*(1-
@@ -3701,12 +3988,13 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
    } else {  #1D
       if(is.null(color)) color<-"black"
       if(manualScale){
-        ymin<-min(mrbin.env$mrbinTMP$currentSpectrumOriginal)
-        ymax<-max(mrbin.env$mrbinTMP$currentSpectrumOriginal)/mrbin.env$mrbinplot$intensityScale
+        ymin<-min(currentSpectrumOriginal)/mrbin.env$mrbinplot$intensityScale+mrbin.env$mrbinplot$intensityOffset
+        ymax<-max(currentSpectrumOriginal)/mrbin.env$mrbinplot$intensityScale+mrbin.env$mrbinplot$intensityOffset
       } else {
         ymin<-0
-        spectrumTMP<-mrbin.env$mrbinTMP$currentSpectrumOriginal[as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal<region[1]))&
-                   as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal))>region[2]]
+        spectrumTMP<-currentSpectrumOriginal[as.numeric(names(currentSpectrumOriginal<
+                   region[1]))&
+                   as.numeric(names(currentSpectrumOriginal))>region[2]]
         ymax<-sort(spectrumTMP,decreasing=TRUE)[ceiling(.01*length(spectrumTMP))]
       }
       if(!add){
@@ -3715,16 +4003,18 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
             ylim=c(ymin,ymax),main=plotTitle,
             xlab="Chemical shift [ppm]",ylab="Intensity")
       }
-      if(!is.null(rectangleRegions)){
-          graphics::rect(xleft=rectangleRegions[,1], ybottom=0, xright=rectangleRegions[,2], ytop=ymax*2,
+      if(!add&!is.null(rectangleRegions)){
+          graphics::rect(xleft=rectangleRegions[,1], ybottom=0,
+                    xright=rectangleRegions[,2], ytop=ymax*2,
                     col = rectangleColors, border = NA)
           graphics::box()
       }
-      graphics::lines(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)),mrbin.env$mrbinTMP$currentSpectrumOriginal,
+      graphics::lines(as.numeric(names(currentSpectrumOriginal)),
+                currentSpectrumOriginal,
                 col=color)
       if(showGrid){
-          GridxCoord<-as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal))
-          Gridx<-mrbin.env$mrbinTMP$currentSpectrumOriginal[GridxCoord<region[1]&GridxCoord>region[2]]
+          GridxCoord<-as.numeric(names(currentSpectrumOriginal))
+          Gridx<-currentSpectrumOriginal[GridxCoord<region[1]&GridxCoord>region[2]]
           GridxCoord<-GridxCoord[GridxCoord<region[1]&GridxCoord>region[2]]
           graphics::points(GridxCoord,Gridx,
                          col = "darkgray",pch="+",cex=.85)
@@ -3732,11 +4022,14 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
       utils::flush.console()
     }
  }
+ Sys.sleep(0)#This forces RStudio to update the plot
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function increases the intensity of the current NMR spectrum plot.
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
+#' @param dimension Dimension to use. Defaults to "1D"
 #' @return {None}
 #' @export
 #' @examples
@@ -3747,16 +4040,22 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 #' plotNMR()
 #' intPlus()
 
-intPlus<-function(){#increase plot intensity
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+intPlus<-function(dimension="1D",refreshPlot=TRUE){#increase plot intensity
+ if(dimension=="1D"){
    mrbin.env$mrbinplot$intensityScale<-mrbin.env$mrbinplot$intensityScale*2
-   plotNMR()
+ } else {
+   mrbin.env$mrbinplot$intensityScale2D<-mrbin.env$mrbinplot$intensityScale2D*2
  }
+ if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function decreases the intensity of the current NMR spectrum plot.
+#' @param dimension Dimension to use. Defaults to "1D"
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
+#' @param value Set exact value. Defaults to NULL
 #' @return {None}
 #' @export
 #' @examples
@@ -3767,38 +4066,54 @@ intPlus<-function(){#increase plot intensity
 #' plotNMR()
 #' intMin()
 
-intMin<-function(){#decrease plot intensity
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+intMin<-function(dimension="1D",refreshPlot=TRUE,value=NULL){#decrease plot intensity
+ if(dimension=="1D"){
+  if(is.null(value)){
    mrbin.env$mrbinplot$intensityScale<-mrbin.env$mrbinplot$intensityScale*0.5
-   plotNMR()
+  } else {
+   mrbin.env$mrbinplot$intensityScale<-as.numeric(value)
+  }
+ } else {
+  if(is.null(value)){
+   mrbin.env$mrbinplot$intensityScale2D<-mrbin.env$mrbinplot$intensityScale2D*0.5
+  } else {
+   mrbin.env$mrbinplot$intensityScale2D<-as.numeric(value)
+  }
+
  }
+ if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function increases the minimum contour level of the current 2D NMR
 #' spectrum plot.
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' readBruker(folder=system.file("extdata/1/12/pdata/10",package="mrbin"),dimension="2D")
 #' plotNMR()
 #' contPlus()
 
-contPlus<-function(){#decrease plot intensity
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+contPlus<-function(refreshPlot=TRUE){#decrease plot intensity
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
    mrbin.env$mrbinplot$lowestContour<-mrbin.env$mrbinplot$lowestContour*1.5
-   plotNMR()
- }
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function decreases the minimum contour level of the current 2D NMR
 #' spectrum plot.
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="2D",binwidth2D=0.5,
 #'          binheight=3,PQNScaling="No",referenceScaling="No",binRegion=c(4,3,60,65),
 #'          noiseRemoval="No",trimZeros="No",cropHSQC="No",
@@ -3807,11 +4122,11 @@ contPlus<-function(){#decrease plot intensity
 #' plotNMR()
 #' contMin()
 
-contMin<-function(){#decrease plot intensity
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+contMin<-function(refreshPlot=TRUE){#decrease plot intensity
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
    mrbin.env$mrbinplot$lowestContour<-mrbin.env$mrbinplot$lowestContour*0.75
-   plotNMR()
- }
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
@@ -3822,6 +4137,7 @@ contMin<-function(){#decrease plot intensity
 #' @param right New right boundary
 #' @param top New top boundary
 #' @param bottom New bottom boundary
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
@@ -3832,8 +4148,8 @@ contMin<-function(){#decrease plot intensity
 #' plotNMR()
 #' zoom(left=4.6,right=2,top=10,bottom=150)
 
-zoom<-function(left=NULL,right=NULL,top=NULL,bottom=NULL){
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+zoom<-function(left=NULL,right=NULL,top=NULL,bottom=NULL,refreshPlot=TRUE){
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
    if(is.null(left)) stop("Please set left limit\n")
    if(is.null(right)) stop("Please set right limit\n")
    if(is.matrix(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
@@ -3844,13 +4160,16 @@ zoom<-function(left=NULL,right=NULL,top=NULL,bottom=NULL){
    mrbin.env$mrbinplot$plotRegion[2]<-right
    mrbin.env$mrbinplot$plotRegion[3]<-top
    mrbin.env$mrbinplot$plotRegion[4]<-bottom
-   plotNMR()
- }
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function zooms into the plot region of the current NMR plot.
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
+#' @param x Change x axis? Defaults to TRUE
+#' @param y Change y axis? Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
@@ -3861,35 +4180,56 @@ zoom<-function(left=NULL,right=NULL,top=NULL,bottom=NULL){
 #' plotNMR()
 #' zoomIn()
 
-zoomIn<-function(){#Zoom into NMR spectrum plot
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+zoomIn<-function(refreshPlot=TRUE,x=TRUE,y=TRUE){#Zoom into NMR spectrum plot
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+   leftMax<-Inf
+   rightMax<--Inf
+   bottomMax<-Inf
+   topMax<--Inf
    if(mrbin.env$mrbinparam$dimension=="1D"){
-       leftMax<-max(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       rightMax<-min(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
+       if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$currentSpectrumOriginal
+       } else {
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$additionalPlots1D[[1]]
+       }
+       leftMax<-max(as.numeric(names(currentSpectrumOriginal)))
+       rightMax<-min(as.numeric(names(currentSpectrumOriginal)))
        topMax<--10
        bottomMax<-160
    }
    if(mrbin.env$mrbinparam$dimension=="2D"){
-       leftMax<-max(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       rightMax<-min(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       topMax<-min(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       bottomMax<-max(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
+       if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$currentSpectrumOriginal
+       } else {
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$additionalPlots2D[[1]]
+       }
+       leftMax<-max(as.numeric(colnames(currentSpectrumOriginal)))
+       rightMax<-min(as.numeric(colnames(currentSpectrumOriginal)))
+       topMax<-min(as.numeric(rownames(currentSpectrumOriginal)))
+       bottomMax<-max(as.numeric(rownames(currentSpectrumOriginal)))
    }
-   mrbin.env$mrbinplot$plotRegion[1]<-min(leftMax,
-                             mrbin.env$mrbinplot$plotRegion[1]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])/4)
-   mrbin.env$mrbinplot$plotRegion[2]<-max(rightMax,
-                             mrbin.env$mrbinplot$plotRegion[1]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*3/4)
-   mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
-                             mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])*3/4)
-   mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
-                             mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])/4)
-   plotNMR()
- }
+   if(x){
+     mrbin.env$mrbinplot$plotRegion[1]<-min(leftMax,
+                               mrbin.env$mrbinplot$plotRegion[1]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])/4)
+     mrbin.env$mrbinplot$plotRegion[2]<-max(rightMax,
+                               mrbin.env$mrbinplot$plotRegion[1]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*3/4)
+   }
+   if(y){
+     mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
+                               mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])*3/4)
+     mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
+                               mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])/4)
+   }
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function zooms out from the plot region of the current NMR plot.
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
+#' @param x Change x axis? Defaults to TRUE
+#' @param y Change y axis? Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
@@ -3901,38 +4241,74 @@ zoomIn<-function(){#Zoom into NMR spectrum plot
 #' zoomIn()
 #' zoomOut()
 
-zoomOut<-function(){#Zoom out from NMR spectrum plot
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+zoomOut<-function(refreshPlot=TRUE,x=TRUE,y=TRUE){#Zoom out from NMR spectrum plot
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+   leftMax<-Inf
+   rightMax<--Inf
+   bottomMax<-Inf
+   topMax<--Inf
    if(mrbin.env$mrbinparam$dimension=="1D"){
-       leftMax<-max(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       rightMax<-min(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
+       if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$currentSpectrumOriginal
+       } else {
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$additionalPlots1D[[1]]
+       }
+       leftMax<-max(as.numeric(names(currentSpectrumOriginal)))
+       rightMax<-min(as.numeric(names(currentSpectrumOriginal)))
        topMax<--10
        bottomMax<-160
    }
    if(mrbin.env$mrbinparam$dimension=="2D"){
-       leftMax<-max(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       rightMax<-min(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       topMax<-min(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       bottomMax<-max(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
+       if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$currentSpectrumOriginal
+       } else {
+         currentSpectrumOriginal<-mrbin.env$mrbinTMP$additionalPlots2D[[1]]
+       }
+       leftMax<-max(as.numeric(colnames(currentSpectrumOriginal)))
+       rightMax<-min(as.numeric(colnames(currentSpectrumOriginal)))
+       topMax<-min(as.numeric(rownames(currentSpectrumOriginal)))
+       bottomMax<-max(as.numeric(rownames(currentSpectrumOriginal)))
    }
-   mrbin.env$mrbinplot$plotRegion[1]<-min(leftMax,
-                             mrbin.env$mrbinplot$plotRegion[1]+(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])/2)
-   mrbin.env$mrbinplot$plotRegion[2]<-max(rightMax,
-                             mrbin.env$mrbinplot$plotRegion[1]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*3/2)
-   mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
-                             mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])*3/2)
-   mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
-                             mrbin.env$mrbinplot$plotRegion[4]+(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])/2)
-   plotNMR()
- }
+   if(x){
+     mrbin.env$mrbinplot$plotRegion[1]<-min(leftMax,
+                               mrbin.env$mrbinplot$plotRegion[1]+(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])/2)
+     mrbin.env$mrbinplot$plotRegion[2]<-max(rightMax,
+                               mrbin.env$mrbinplot$plotRegion[1]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*3/2)
+   }
+   if(y){
+     mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
+                               mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])*3/2)
+     mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
+                               mrbin.env$mrbinplot$plotRegion[4]+(mrbin.env$mrbinplot$plotRegion[4]-mrbin.env$mrbinplot$plotRegion[3])/2)
+   }
+   if(refreshPlot)  plotNMR()
+ #}
 }
+
+
+#' A function for changing plotNMR plots.
+#'
+#' This function moves up or down the 1D plot region of the current NMR plot.
+#' @param offsetValue The new offset value. Defaults to NULL
+#' @return {None}
+#' @export
+#' @examples
+#' setOffset(0)
+setOffset<-function(offsetValue=NULL){
+  if(!is.null(offsetValue)){
+    mrbin.env$mrbinplot$intensityOffset<-offsetValue
+  }
+}
+
 
 #' A function for changing plotNMR plots.
 #'
 #' This function moves left the plot region of the current NMR plot.
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="1D",binwidth1D=.5,
 #'          noiseRemoval="No",trimZeros="No",
 #'          PQNScaling="No",saveFiles="No",referenceScaling="No",
@@ -3942,13 +4318,19 @@ zoomOut<-function(){#Zoom out from NMR spectrum plot
 #' zoomIn()
 #' left()
 
-left<-function(){
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
-   if(mrbin.env$mrbinparam$dimension=="1D"){
+left<-function(refreshPlot=TRUE){
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+   leftMax<-Inf
+   rightMax<--Inf
+   bottomMax<-Inf
+   topMax<--Inf
+   if(mrbin.env$mrbinparam$dimension=="1D"&
+     !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
        leftMax<-max(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
        rightMax<-min(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
    }
-   if(mrbin.env$mrbinparam$dimension=="2D"){
+   if(mrbin.env$mrbinparam$dimension=="2D"&
+     !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
        leftMax<-max(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
        rightMax<-min(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
    }
@@ -3956,16 +4338,18 @@ left<-function(){
                              mrbin.env$mrbinplot$plotRegion[1]+(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*.1)
    mrbin.env$mrbinplot$plotRegion[2]<-max(rightMax,
                              mrbin.env$mrbinplot$plotRegion[2]+(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*.1)
-   plotNMR()
- }
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function moves right the plot region of the current NMR plot.
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="1D",binwidth1D=.5,
 #'          noiseRemoval="No",trimZeros="No",
 #'          PQNScaling="No",saveFiles="No",referenceScaling="No",
@@ -3975,13 +4359,19 @@ left<-function(){
 #' zoomIn()
 #' right()
 
-right<-function(){
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
-   if(mrbin.env$mrbinparam$dimension=="1D"){
+right<-function(refreshPlot=TRUE){
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+   leftMax<-Inf
+   rightMax<--Inf
+   bottomMax<-Inf
+   topMax<--Inf
+   if(mrbin.env$mrbinparam$dimension=="1D"&
+     !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
        leftMax<-max(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
        rightMax<-min(as.numeric(names(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
    }
-   if(mrbin.env$mrbinparam$dimension=="2D"){
+   if(mrbin.env$mrbinparam$dimension=="2D"&
+     !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
        leftMax<-max(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
        rightMax<-min(as.numeric(colnames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
    }
@@ -3989,16 +4379,18 @@ right<-function(){
                              mrbin.env$mrbinplot$plotRegion[1]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*.1)
    mrbin.env$mrbinplot$plotRegion[2]<-max(rightMax,
                              mrbin.env$mrbinplot$plotRegion[2]-(mrbin.env$mrbinplot$plotRegion[1]-mrbin.env$mrbinplot$plotRegion[2])*.1)
-   plotNMR()
- }
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function moves down the plot region of the current NMR plot (only 2D).
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="2D",binwidth2D=0.5,
 #'          binheight=3,PQNScaling="No",referenceScaling="No",binRegion=c(4,3,60,65),
 #'          noiseRemoval="No",trimZeros="No",cropHSQC="No",
@@ -4008,26 +4400,31 @@ right<-function(){
 #' zoomIn()
 #' down()
 
-down<-function(){
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
-   if(mrbin.env$mrbinparam$dimension=="2D"){
+down<-function(refreshPlot=TRUE){
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+   bottomMax<-Inf
+   topMax<--Inf
+   if(mrbin.env$mrbinparam$dimension=="2D"&
+     !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
        topMax<-min(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
        bottomMax<-max(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
-                                 mrbin.env$mrbinplot$plotRegion[3]-(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
-       mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
-                                 mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
-       plotNMR()
    }
- }
+   mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
+                             mrbin.env$mrbinplot$plotRegion[3]-(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
+   mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
+                             mrbin.env$mrbinplot$plotRegion[4]-(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for changing plotNMR plots.
 #'
 #' This function moves up the plot region of the current NMR plot (only 2D).
+#' @param refreshPlot Refresh plot automatically. Defaults to TRUE
 #' @return {None}
 #' @export
 #' @examples
+#' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="2D",binwidth2D=0.5,
 #'          binheight=3,PQNScaling="No",referenceScaling="No",binRegion=c(4,3,60,65),
 #'          noiseRemoval="No",trimZeros="No",cropHSQC="No",
@@ -4037,18 +4434,21 @@ down<-function(){
 #' zoomIn()
 #' up()
 
-up<-function(){
- if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
-   if(mrbin.env$mrbinparam$dimension=="2D"){
+up<-function(refreshPlot=TRUE){
+ #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+   bottomMax<-Inf
+   topMax<--Inf
+   if(mrbin.env$mrbinparam$dimension=="2D"&
+     !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
        topMax<-min(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
        bottomMax<-max(as.numeric(rownames(mrbin.env$mrbinTMP$currentSpectrumOriginal)))
-       mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
-                                 mrbin.env$mrbinplot$plotRegion[3]+(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
-       mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
-                                 mrbin.env$mrbinplot$plotRegion[4]+(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
-       plotNMR()
    }
- }
+   mrbin.env$mrbinplot$plotRegion[3]<-max(topMax,
+                             mrbin.env$mrbinplot$plotRegion[3]+(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
+   mrbin.env$mrbinplot$plotRegion[4]<-min(bottomMax,
+                             mrbin.env$mrbinplot$plotRegion[4]+(mrbin.env$mrbinplot$plotRegion[3]-mrbin.env$mrbinplot$plotRegion[4])*.1)
+   if(refreshPlot)  plotNMR()
+ #}
 }
 
 #' A function for saving the package environment.
@@ -4115,7 +4515,7 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
    removeAreas="No",reference1D=NULL,reference2D=NULL,solventRegion=NULL,
    removeAreaList=NULL,NMRvendor="Bruker",noiseRange1d=NULL,
    noiseRange2d=NULL,binMethod="Rectangular bins",
-   useAsNames="Spectrum titles"
+   useAsNames="Spectrum titles",useMeanIntensityForBins=TRUE
    ){#Bin NMR spectral data
   if(!is.null(folder)){
     warningMessage<-NULL
@@ -4146,11 +4546,13 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
                dimension=dimension,removeAreaList=removeAreaList)
     #mrbin.env$mrbinTMP$binTMP<-NULL
     binData<-binSingleNMR(currentSpectrum=NMRdata,dimension=dimension,
-              binRegions=binRegions,binMethod=binMethod)
+              binRegions=binRegions,binMethod=binMethod,
+              useMeanIntensityForBins=useMeanIntensityForBins)
     noiseData<-calculateNoise(NMRdata=NMRdataOriginal,
                pointsPerBin=binData$pointsPerBin,dimension=dimension,
-               noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d
-               )#list
+               noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d,
+               binRegions=binRegions,#must be original bin regions??????????????????????????? before removing solvent and areas
+               useMeanIntensityForBins=useMeanIntensityForBins)#list
     if(referenceScaling=="Yes"){
       if(scalingFactor<(3*noiseData$noise_level)){
         warningMessage<-c(warningMessage,paste(
@@ -4191,6 +4593,7 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
 #' @param onlyTitles Read only spectrum titles, but no data. Defaults to FALSE
 #' @param NMRvendor Defines the NMR manufacturer, default is "Bruker"
 #' @param useAsNames How should sample names be generated
+#' @param checkFiles Only check if the folder exists or contains NMR data. Defaults to FALSE
 #' @return An (invisible) list containing spectral data and the spectrum name
 #' @keywords internal
 #' @noRd
@@ -4198,11 +4601,13 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
 #' \donttest{ readNMR() }
 
 readNMR<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
-          NMRvendor="Bruker",useAsNames="Spectrum titles"){#Read NMR spectral data
+          NMRvendor="Bruker",useAsNames="Spectrum titles",
+          checkFiles=FALSE){#Read NMR spectral data
  #if(!is.null(mrbin.env$mrbinTMP$currentFolder)){
   if(NMRvendor=="Bruker"){
       currentSpectrum<-readBruker(folder=folder,dimension=dimension,
-                      onlyTitles=onlyTitles,useAsNames=useAsNames)
+                      onlyTitles=onlyTitles,useAsNames=useAsNames,
+                      checkFiles=checkFiles)
   }  else {
       stop(paste("No data import function defined for vendor ",NMRvendor,".\n",sep=""))
   }
@@ -4217,6 +4622,7 @@ readNMR<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
 #' @param dimension Defines the data dimension, "1D" or "2D". Only used if not NULL
 #' @param onlyTitles Read only spectrum titles, but no data. Defaults to FALSE
 #' @param useAsNames How should sample names be generated
+#' @param checkFiles Only check if the folder exists or contains NMR data. Defaults to FALSE
 #' @return An (invisible) list containing spectral data and the spectrum name
 #' @export
 #' @examples
@@ -4224,7 +4630,7 @@ readNMR<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
 #'                         dimension="1D")
 
 readBruker<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
-  useAsNames="Spectrum titles"){#Read Bruker NMR spectral data
+  useAsNames="Spectrum titles",checkFiles=FALSE){#Read Bruker NMR spectral data
  datanameDict<-c("1r","2rr")
  names(datanameDict)<-c("1D","2D")
  #if(is.null(folder)){
@@ -4240,80 +4646,95 @@ readBruker<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
  if(!is.null(spectrum_proc_path)){
    BYTORDP_Dict<-c("little","big")
    names(BYTORDP_Dict)<-c(0,1)
-   TITLE<-scan(file=paste(spectrum_proc_path,"/title",sep=""),what="character",sep="\n",quiet=TRUE)[1]
-   if(!onlyTitles){
-     proc<-scan(file=paste(spectrum_proc_path,"/procs",sep=""),what="character",sep="\n",quiet=TRUE)
-     proc<-gsub("#","",proc)
-     proc<-gsub("\\$"," ",proc)
-     SI2<-as.numeric(strsplit(proc[grep(" SI=",proc)],split="= ")[[1]][2])
-     BYTORDP<-BYTORDP_Dict[strsplit(proc[grep(" BYTORDP=",proc)],split="= ")[[1]][2]]
-     NC_proc<-as.numeric(strsplit(proc[grep(" NC_proc=",proc)],split="= ")[[1]][2])
-     XDIM2<-as.numeric(strsplit(proc[grep(" XDIM=",proc)],split="= ")[[1]][2])
-     OFFSET2<-as.numeric(strsplit(proc[grep(" OFFSET=",proc)],split="= ")[[1]][2])#ppm
-     SF2<-as.numeric(strsplit(proc[grep(" SF=",proc)],split="= ")[[1]][2])#MHz
-     SW_p2<-as.numeric(strsplit(proc[grep(" SW_p=",proc)],split="= ")[[1]][2])#Hz
-     rightlimit2<-OFFSET2-SW_p2/SF2
-     leftlimit2<-OFFSET2
-     frequencynames2<-OFFSET2-(0:(SI2-1))*SW_p2/SF2/SI2
-     n<-SI2
-     if(datanameTmp=="2rr"){#Only 2D
-         proc2<-scan(file=paste(spectrum_proc_path,"/proc2s",sep=""),what="character",sep="\n",quiet=TRUE)
-         proc2<-gsub("#","",proc2)
-         proc2<-gsub("\\$"," ",proc2)
-         SI1<-as.numeric(strsplit(proc2[grep(" SI=",proc2)],split="= ")[[1]][2])
-         XDIM1<-as.numeric(strsplit(proc2[grep(" XDIM=",proc2)],split="= ")[[1]][2])
-         OFFSET1<-as.numeric(strsplit(proc2[grep(" OFFSET=",proc2)],split="= ")[[1]][2])#ppm
-         SF1<-as.numeric(strsplit(proc2[grep(" SF=",proc2)],split="= ")[[1]][2])#MHz
-         SW_p1<-as.numeric(strsplit(proc2[grep(" SW_p=",proc2)],split="= ")[[1]][2])#Hz
-         n<-SI2*SI1
-         rightlimit1<-OFFSET1-SW_p1/SF1
-         leftlimit1<-OFFSET1
-         frequencynames1<-OFFSET1-(0:(SI1-1))*SW_p1/SF1/SI1
-     }
-     currentSpectrum<-readBin(paste(spectrum_proc_path,"/",datanameTmp,sep=""),
-                          what='integer',size=4,n=n,endian=BYTORDP)
-     currentSpectrum<-currentSpectrum*2^NC_proc
-     if(datanameTmp=="2rr"){
-        currentSpectrumTMP<-currentSpectrum
-        currentSpectrum<-matrix(currentSpectrum,ncol=SI2,byrow =TRUE)#ncol=SI2)
-        #Needs to be sorted,XDIM2: number of columns/block, XDIM1: rows/block
-        counter<-0
-        for(j in 1:(nrow(currentSpectrum)/XDIM1)){
-            for(i in 1:(ncol(currentSpectrum)/XDIM2)){
-              currentSpectrum[(j-1)*XDIM1+(1:XDIM1),(i-1)*XDIM2+(1:XDIM2)]<-
-                   matrix(currentSpectrumTMP[counter*XDIM2*XDIM1 +(1:(XDIM2*XDIM1))],ncol=XDIM2,byrow=TRUE)
-              counter<-counter+1
-            }
-        }
-        rownames(currentSpectrum)<-frequencynames1
-        colnames(currentSpectrum)<-frequencynames2
-     } else {
-       names(currentSpectrum)<-frequencynames2
-     }
-   } else {
+   TITLE<-""
+   try(TITLE<-scan(file=paste(spectrum_proc_path,"/title",sep=""),what="character",sep="\n",quiet=TRUE)[1],
+     silent=TRUE)
+   if(checkFiles){
      currentSpectrum <- NULL
+     titleFinal <- NULL
+     currentSpectrumTitle <- NULL
+     currentSpectrumFolderName <- NULL
+     currentSpectrumEXPNO <- NULL
+     currentSpectrumFolderName_EXPNO <- NULL
+     list.filesTMP<-list.files(spectrum_proc_path)
+     if(!"procs"%in%list.filesTMP){
+        stop(paste("Could not open spectrum",spectrum_proc_path))
+     }
+   }  else {
+     if(!onlyTitles){
+       proc<-scan(file=paste(spectrum_proc_path,"/procs",sep=""),what="character",sep="\n",quiet=TRUE)
+       proc<-gsub("#","",proc)
+       proc<-gsub("\\$"," ",proc)
+       SI2<-as.numeric(strsplit(proc[grep(" SI=",proc)],split="= ")[[1]][2])
+       BYTORDP<-BYTORDP_Dict[strsplit(proc[grep(" BYTORDP=",proc)],split="= ")[[1]][2]]
+       NC_proc<-as.numeric(strsplit(proc[grep(" NC_proc=",proc)],split="= ")[[1]][2])
+       XDIM2<-as.numeric(strsplit(proc[grep(" XDIM=",proc)],split="= ")[[1]][2])
+       OFFSET2<-as.numeric(strsplit(proc[grep(" OFFSET=",proc)],split="= ")[[1]][2])#ppm
+       SF2<-as.numeric(strsplit(proc[grep(" SF=",proc)],split="= ")[[1]][2])#MHz
+       SW_p2<-as.numeric(strsplit(proc[grep(" SW_p=",proc)],split="= ")[[1]][2])#Hz
+       rightlimit2<-OFFSET2-SW_p2/SF2
+       leftlimit2<-OFFSET2
+       frequencynames2<-OFFSET2-(0:(SI2-1))*SW_p2/SF2/SI2
+       n<-SI2
+       if(datanameTmp=="2rr"){#Only 2D
+           proc2<-scan(file=paste(spectrum_proc_path,"/proc2s",sep=""),what="character",sep="\n",quiet=TRUE)
+           proc2<-gsub("#","",proc2)
+           proc2<-gsub("\\$"," ",proc2)
+           SI1<-as.numeric(strsplit(proc2[grep(" SI=",proc2)],split="= ")[[1]][2])
+           XDIM1<-as.numeric(strsplit(proc2[grep(" XDIM=",proc2)],split="= ")[[1]][2])
+           OFFSET1<-as.numeric(strsplit(proc2[grep(" OFFSET=",proc2)],split="= ")[[1]][2])#ppm
+           SF1<-as.numeric(strsplit(proc2[grep(" SF=",proc2)],split="= ")[[1]][2])#MHz
+           SW_p1<-as.numeric(strsplit(proc2[grep(" SW_p=",proc2)],split="= ")[[1]][2])#Hz
+           n<-SI2*SI1
+           rightlimit1<-OFFSET1-SW_p1/SF1
+           leftlimit1<-OFFSET1
+           frequencynames1<-OFFSET1-(0:(SI1-1))*SW_p1/SF1/SI1
+       }
+       currentSpectrum<-readBin(paste(spectrum_proc_path,"/",datanameTmp,sep=""),
+                            what='integer',size=4,n=n,endian=BYTORDP)
+       currentSpectrum<-currentSpectrum*2^NC_proc
+       if(datanameTmp=="2rr"){
+          currentSpectrumTMP<-currentSpectrum
+          currentSpectrum<-matrix(currentSpectrum,ncol=SI2,byrow =TRUE)#ncol=SI2)
+          #Needs to be sorted,XDIM2: number of columns/block, XDIM1: rows/block
+          counter<-0
+          for(j in 1:(nrow(currentSpectrum)/XDIM1)){
+              for(i in 1:(ncol(currentSpectrum)/XDIM2)){
+                currentSpectrum[(j-1)*XDIM1+(1:XDIM1),(i-1)*XDIM2+(1:XDIM2)]<-
+                     matrix(currentSpectrumTMP[counter*XDIM2*XDIM1 +(1:(XDIM2*XDIM1))],ncol=XDIM2,byrow=TRUE)
+                counter<-counter+1
+              }
+          }
+          rownames(currentSpectrum)<-frequencynames1
+          colnames(currentSpectrum)<-frequencynames2
+       } else {
+         names(currentSpectrum)<-frequencynames2
+       }
+     } else {
+       currentSpectrum <- NULL
+     }
+     currentSpectrumTitle<-TITLE
+     currentSpectrumFolderName<-rev(strsplit(spectrum_proc_path,"/")[[1]])[4]
+     currentSpectrumEXPNO<-rev(strsplit(spectrum_proc_path,"/")[[1]])[3]
+     currentSpectrumFolderName_EXPNO<-paste(
+                 currentSpectrumFolderName,
+                 paste(c("_","0","0","0","0")[1:max(1,5-nchar(currentSpectrumEXPNO))],sep="",collapse=""),
+                 currentSpectrumEXPNO,sep="")
+     if(useAsNames=="Spectrum titles")    titleFinal<-currentSpectrumTitle
+     if(useAsNames=="Folder names")    titleFinal<-currentSpectrumFolderName
+     if(useAsNames=="Folder names and EXPNO")    titleFinal<-currentSpectrumFolderName_EXPNO
+     #if(is.null(folder)){
+     #  if(!onlyTitles){
+     #    mrbin.env$mrbinTMP$currentSpectrum<-currentSpectrum
+     #    mrbin.env$mrbinTMP$currentSpectrumOriginal<-currentSpectrum
+     #  }
+     #  mrbin.env$mrbinTMP$currentSpectrumTitle<-currentSpectrumTitle
+     #  mrbin.env$mrbinTMP$currentSpectrumFolderName<-currentSpectrumFolderName
+     #  mrbin.env$mrbinTMP$currentSpectrumEXPNO<-currentSpectrumEXPNO
+     #  mrbin.env$mrbinTMP$currentSpectrumFolderName_EXPNO<-currentSpectrumFolderName_EXPNO
+     #  mrbin.env$mrbinTMP$currentSpectrumName<-titleFinal
+     #}
    }
-   currentSpectrumTitle<-TITLE
-   currentSpectrumFolderName<-rev(strsplit(spectrum_proc_path,"/")[[1]])[4]
-   currentSpectrumEXPNO<-rev(strsplit(spectrum_proc_path,"/")[[1]])[3]
-   currentSpectrumFolderName_EXPNO<-paste(
-               currentSpectrumFolderName,
-               paste(c("_","0","0","0","0")[1:max(1,5-nchar(currentSpectrumEXPNO))],sep="",collapse=""),
-               currentSpectrumEXPNO,sep="")
-   if(useAsNames=="Spectrum titles")    titleFinal<-currentSpectrumTitle
-   if(useAsNames=="Folder names")    titleFinal<-currentSpectrumFolderName
-   if(useAsNames=="Folder names and EXPNO")    titleFinal<-currentSpectrumFolderName_EXPNO
-   #if(is.null(folder)){
-   #  if(!onlyTitles){
-   #    mrbin.env$mrbinTMP$currentSpectrum<-currentSpectrum
-   #    mrbin.env$mrbinTMP$currentSpectrumOriginal<-currentSpectrum
-   #  }
-   #  mrbin.env$mrbinTMP$currentSpectrumTitle<-currentSpectrumTitle
-   #  mrbin.env$mrbinTMP$currentSpectrumFolderName<-currentSpectrumFolderName
-   #  mrbin.env$mrbinTMP$currentSpectrumEXPNO<-currentSpectrumEXPNO
-   #  mrbin.env$mrbinTMP$currentSpectrumFolderName_EXPNO<-currentSpectrumFolderName_EXPNO
-   #  mrbin.env$mrbinTMP$currentSpectrumName<-titleFinal
-   #}
    invisible(list(currentSpectrum=currentSpectrum,currentSpectrumName=titleFinal,
            currentSpectrumTitle=currentSpectrumTitle,
            currentSpectrumFolderName=currentSpectrumFolderName,
@@ -4350,7 +4771,7 @@ referenceScaling<-function(NMRdata=NULL,reference1D=NULL,reference2D=NULL,dimens
   if(dimension=="1D"){
        scalingFactor<-mean(NMRdata[which(as.numeric(names(NMRdata))<=
                            reference1D[1]&as.numeric(names(NMRdata))>
-                                       reference1D[2])],na.rm=TRUE)
+                                       reference1D[2])],na.rm=TRUE)*abs(reference1D[1]-reference1D[2])
        scaledSpectrum<-NMRdata/scalingFactor
   }
   if(dimension=="2D"){
@@ -4361,7 +4782,9 @@ referenceScaling<-function(NMRdata=NULL,reference1D=NULL,reference2D=NULL,dimens
                        reference2D[1]&
                        as.numeric(colnames(NMRdata))>
                        reference2D[2])
-       scalingFactor<-mean(NMRdata[selectedTMP1,selectedTMP2],na.rm=TRUE)
+       scalingFactor<-mean(NMRdata[selectedTMP1,selectedTMP2],na.rm=TRUE)*
+                             abs(reference2D[1]-reference2D[2])*
+                             abs(reference2D[3]-reference2D[4])
        scaledSpectrum<-NMRdata/scalingFactor
   }
   #if(!dataProvided){
@@ -4474,7 +4897,8 @@ removeAreas2<-function(NMRdata=NULL,dimension="1D",removeAreaList=NULL){
 #' \donttest{ binSingleNMR() }
 
 binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
-  binRegions=NULL,binMethod="Rectangular bins"){
+  binRegions=NULL,binMethod="Rectangular bins",
+  useMeanIntensityForBins=TRUE){
   #dataProvided<-TRUE
   #if(is.null(currentSpectrum)){
   #  currentSpectrum<-mrbin.env$mrbinTMP$currentSpectrum
@@ -4498,8 +4922,16 @@ binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
         currentSpectrum[rowsTMP,colsTMP]))
       numberOfPointsPerBin<-c(numberOfPointsPerBin,numberOfPointsPerBinTMP)
       if(numberOfPointsPerBinTMP>0){
-        binTMP[ibinTMP]<-sum(currentSpectrum[rowsTMP,colsTMP],na.rm=TRUE)/
-                         numberOfPointsPerBinTMP
+         adjustTMP<-1
+         if(!useMeanIntensityForBins){
+           adjustTMP<-abs(binRegions[ibinTMP,4]-binRegions[ibinTMP,3])*
+                             abs(binRegions[ibinTMP,2]-binRegions[ibinTMP,1])
+           message(paste("Bin sizes",dim(adjustTMP),"\n"))
+         }
+        message(paste("Number of points",dim(numberOfPointsPerBinTMP),"\n"))
+        message(paste("Sums",dim(sum(currentSpectrum[rowsTMP,colsTMP],na.rm=TRUE)),"\n"))
+        binTMP[ibinTMP]<-(sum(currentSpectrum[rowsTMP,colsTMP],na.rm=TRUE)/
+                         numberOfPointsPerBinTMP)*adjustTMP
         #Set to NA: Make sure each point is counted only once for rectangular bins. For custom bins lists, double counting may be on purpose
         if(binMethod=="Rectangular bins") currentSpectrum[rowsTMP,colsTMP]<-NA
       }
@@ -4513,8 +4945,16 @@ binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
         numberOfPointsPerBinTMP<-sum(indexTMP)
         numberOfPointsPerBin<-c(numberOfPointsPerBin,numberOfPointsPerBinTMP)
         if(numberOfPointsPerBinTMP>0){
-           binTMP[ibinTMP]<-sum(currentSpectrum[
-                            indexTMP])/numberOfPointsPerBinTMP
+           adjustTMP<-1
+           if(!useMeanIntensityForBins){
+             adjustTMP<-abs(binRegions[ibinTMP,2]-binRegions[ibinTMP,1])
+             #message(paste("Bin sizes",(adjustTMP)))
+           }
+           #message(paste("Number of points",(numberOfPointsPerBinTMP),"\n"))
+           #message(paste("Sums",(sum(currentSpectrum[
+           #                 indexTMP])),"\n"))
+           binTMP[ibinTMP]<-(sum(currentSpectrum[
+                            indexTMP])/numberOfPointsPerBinTMP)*adjustTMP
            #Set to NA: Make sure each point is counted only once for rectangular bins. For custom bins lists, double counting may be on purpose
            #if(binMethod=="Rectangular bins") currentSpectrum[NMRspectrumNames<=binRegions[ibinTMP,1]&
            #                        NMRspectrumNames>binRegions[ibinTMP,2]]<-NA
@@ -4522,8 +4962,8 @@ binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
      }
    }
    if(FALSE){
-     #avoid time-consuming loop - but this takes far too much memory in
-     #parallel mode. Without parallel, it might save only little time
+     #this code would avoid a time-consuming loop, but it uses too much memory
+     #in parallel mode. Without parallel, it might save only little time
      indexMatrix<-matrix(rep(NMRspectrumNames,nrow(binRegions)),
                          nrow=nrow(binRegions),byrow=TRUE)
      valueMatrix<-matrix(rep(currentSpectrum,nrow(binRegions)),
@@ -4563,7 +5003,8 @@ binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
 #' \donttest{ calculateNoise() }
 
 calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
-   noiseRange1d=NULL,noiseRange2d=NULL){
+   noiseRange1d=NULL,noiseRange2d=NULL,binRegions=NULL,
+   useMeanIntensityForBins=TRUE){
   #dataProvided<-TRUE
   #if(is.null(NMRdata)){
   #  NMRdata<-mrbin.env$mrbinTMP$currentSpectrumOriginal
@@ -4574,22 +5015,418 @@ calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
   #}
   if(!is.null(NMRdata)){
     if(dimension=="1D"){
+         adjustTMP<-1
+         if(!useMeanIntensityForBins){
+           adjustTMP<-abs(binRegions[,2]-binRegions[,1])
+           #message(adjustTMP)
+         }
          noise_level<-stats::sd(NMRdata[
                  which(as.numeric(names(NMRdata))<=max(noiseRange1d[1:2])&
                       as.numeric(names(NMRdata))>=min(noiseRange1d[1:2]))])
+         noise_level_TMP<-noise_level*(pointsPerBin^(-.5))*adjustTMP
+        #abs(mrbin.env$mrbinTMP$binRegions[,2]-mrbin.env$mrbinTMP$binRegions[,1])<=0
     }
     if(dimension=="2D"){
+         adjustTMP<-1
+         if(!useMeanIntensityForBins){
+           adjustTMP<-abs(binRegions[,2]-binRegions[,1])*abs(binRegions[,4]-binRegions[,3])
+         }
          noise_level<-stats::sd(NMRdata[
                which(as.numeric(rownames(NMRdata))>=min(noiseRange2d[3:4])&
                  as.numeric(rownames(NMRdata))<=max(noiseRange2d[3:4])),
                which(as.numeric(colnames(NMRdata))<=max(noiseRange2d[1:2])&
                  as.numeric(colnames(NMRdata))>=min(noiseRange2d[1:2]))])
+         noise_level_TMP<-noise_level*(pointsPerBin^(-.5))*adjustTMP
     }
-    noise_level_TMP<-noise_level*(pointsPerBin^(-.5))
+    if(sum(is.nan(noise_level_TMP))>0){
+       noise_level_TMP[is.nan(noise_level_TMP)]<-Inf
+    }
     #if(!dataProvided){
     #  mrbin.env$mrbinTMP$noise_level_Raw_TMP<-noise_level
     #  mrbin.env$mrbinTMP$noise_level_TMP<-noise_level_TMP
     #}
     invisible(list(noise_level=noise_level,noise_level_TMP=noise_level_TMP))
  }
+}
+
+#' A function for plotting NMR spectra.
+#'
+#' This function plots the current NMR spectrum. If no parameters are provided, parameters
+#' are read from the mrbin.env environment variables, set by mrbin.
+#' To change the plot, use zoom(),
+#' zoomIn(), zoomOut(), intPlus(), intMin(), left(), right().
+#' For 2D data use additionally: contMin(), contPlus(), up(), down()
+#' @param region A vector defining the plot region (left, right, top, bottom)
+#' @param rectangleRegions A 4-column matrix defining areas where to plot rectangles
+#' @param rectangleColors Define colors for the rectangles
+#' @param rectangleFront Plot rectangles in front of spectrum rather than in background (only 2D)
+#' @param polygonRegion Defines 4 corners of a polygon to be plotted
+#' @param color Defines the color of the spectrum plot. If NULL, a rainbow theme is used for 2D NMR
+#' @param add If TRUE, additional spectrum plots are overlaid with the current plot
+#' @param manualScale If TRUE, scaling factor is taken from environment variables
+#' @param plotTitle Defines the main title of the plot
+#' @param showGrid Shows a grid of data points. Defaults to FALSE
+#' @param restrictToRange Restrict plot area to range of available data points. Defaults to FALSE
+#' @return {None}
+#' @export
+#' @examples
+#' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",
+#'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
+#'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
+#' plotMultiNMR()
+
+plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
+                   rectangleColors=c("green","orange","blue","red","yellow",
+                     "gray","purple"),
+                   rectangleFront=FALSE,
+                   polygonRegion=NULL,
+                   color=NULL,add=FALSE,showGrid=FALSE,
+                   manualScale=TRUE,plotTitle="",
+                   restrictToRange=FALSE){
+  #if 1D and 2D spectra are present, create a plot with two rows
+  TMP1D<-FALSE
+  TMP2D<-FALSE
+  if(mrbin.env$mrbinparam$dimension=="1D"&
+       !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+    TMP1D<-TRUE
+  }
+  if(mrbin.env$mrbinparam$dimension=="2D"&
+       !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+    TMP2D<-TRUE
+  }
+  if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)) TMP1D<-TRUE
+  if(!is.null(mrbin.env$mrbinTMP$additionalPlots2D)) TMP2D<-TRUE
+  if(TMP1D&TMP2D){
+    par(mfrow=c(2,1),mar=c(2.3, 2.1, 0.5, 0.8))#bottom, left, top, and right
+  }
+  if(TMP2D){
+    counterTMP<-0
+    if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+      plotNMR(region=region,rectangleRegions=rectangleRegions,
+                   rectangleColors=rectangleColors,
+                   rectangleFront=rectangleFront,
+                   polygonRegion=polygonRegion,
+                   color=color,add=add,showGrid=showGrid,
+                   manualScale=manualScale,plotTitle=plotTitle,
+                   restrictToRange=restrictToRange)
+      counterTMP<-counterTMP+1
+    }
+    if(!is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
+      for(iTMP in 1:length(mrbin.env$mrbinTMP$additionalPlots2D)){
+        if(counterTMP==0){
+          plotNMR(region=region,rectangleRegions=NULL,
+                       rectangleColors=rectangleColors,
+                       rectangleFront=FALSE,
+                       polygonRegion=polygonRegion,
+                       color=color,add=add,showGrid=FALSE,
+                       manualScale=manualScale,plotTitle=plotTitle,
+                       restrictToRange=restrictToRange,
+                       currentSpectrumOriginal=
+                       mrbin.env$mrbinTMP$additionalPlots2D[[iTMP]]*as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,7])+as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,9]))
+          counterTMP<-counterTMP+1
+        } else {
+          plotNMR(region=region,rectangleRegions=NULL,
+                       rectangleColors=rectangleColors,
+                       rectangleFront=FALSE,
+                       polygonRegion=polygonRegion,
+                       color=mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,8],
+                       add=TRUE,showGrid=FALSE,
+                       manualScale=manualScale,plotTitle=plotTitle,
+                       restrictToRange=restrictToRange,
+                       currentSpectrumOriginal=
+                       mrbin.env$mrbinTMP$additionalPlots2D[[iTMP]]*as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,7])+as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,9]))
+          counterTMP<-counterTMP+1
+        }
+      }
+    }
+  }
+  if(TMP1D){
+    counterTMP<-0
+    if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+      plotNMR(region=region,rectangleRegions=rectangleRegions,
+                   rectangleColors=rectangleColors,
+                   rectangleFront=rectangleFront,
+                   polygonRegion=polygonRegion,
+                   color=color,add=add,showGrid=showGrid,
+                   manualScale=manualScale,plotTitle=plotTitle,
+                   restrictToRange=restrictToRange)
+      counterTMP<-counterTMP+1
+    }
+    if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
+      for(iTMP in 1:length(mrbin.env$mrbinTMP$additionalPlots1D)){
+        if(counterTMP==0){
+          plotNMR(region=region,rectangleRegions=NULL,
+                       rectangleColors=rectangleColors,
+                       rectangleFront=FALSE,
+                       polygonRegion=polygonRegion,
+                       color=color,add=add,showGrid=FALSE,
+                       manualScale=manualScale,plotTitle=plotTitle,
+                       restrictToRange=restrictToRange,
+                       currentSpectrumOriginal=
+                       mrbin.env$mrbinTMP$additionalPlots1D[[iTMP]]*as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,7])+as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,9]))
+          counterTMP<-counterTMP+1
+        } else {
+          plotNMR(region=region,rectangleRegions=NULL,
+                       rectangleColors=rectangleColors,
+                       rectangleFront=FALSE,
+                       polygonRegion=polygonRegion,
+                       color=mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,8],
+                       add=TRUE,showGrid=FALSE,
+                       manualScale=manualScale,plotTitle=plotTitle,
+                       restrictToRange=restrictToRange,
+                       currentSpectrumOriginal=
+                       mrbin.env$mrbinTMP$additionalPlots1D[[iTMP]]*as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,7])+as.numeric(
+                       mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,9]))
+          counterTMP<-counterTMP+1
+        }
+      }
+    }
+  }
+}
+
+
+#' A function for plotting NMR spectra.
+#'
+#' This function plots NMR spectra. A menu of commands is displayed to edit the
+#' plot view and add spectra. Multiple spectra will be overlaid, and if both
+#' 1D and 2D spectra are selected, they are shown in two plots with matched ranges.
+#' @param hideMenu Do not show the menu. Defaults to FALSE
+#' @param folders Optional vector of folder names of spectra to load. Defaults to NULL
+#' @param dimensions Optional vector dimensions of spectra to load. Defaults to NULL
+#' @param zoom Optional vector of initial zoom area. Defaults to NULL
+#' @param intensity1D Optional value of initial 1D intensity. Defaults to NULL
+#' @return {None}
+#' @export
+#' @examples
+#' resetEnv()
+#' mrplot(folders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
+#'                  system.file("extdata/1/10/pdata/10",package="mrbin"),
+#'                  system.file("extdata/2/10/pdata/10",package="mrbin"),
+#'                  system.file("extdata/3/10/pdata/10",package="mrbin")),
+#'        dimensions=c("2D","1D","1D","1D"),zoom=c(2.8,2.3,20,55),
+#'        intensity1D=32,hideMenu=TRUE)
+
+mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,zoom=NULL){
+  mrbin.env$mrbinTMP$currentSpectrumOriginal<-NULL
+  if(!is.null(folders)){
+    if(is.null(dimensions)) dimensions<-rep("1D",length(folders))
+    for(iTMP in 1:length(folders))
+       addToPlot(folder=folders[iTMP],dimension=dimensions[iTMP])
+  }
+  if(!is.null(zoom)) zoom(zoom[1],zoom[2],zoom[3],zoom[4],refreshPlot=FALSE)
+  if(!is.null(intensity1D)) intMin(value=intensity1D,refreshPlot=FALSE)
+  plotMultiNMR()
+  if(!hideMenu){
+    stopTMP<-FALSE
+    menuItemAdd<-"Add or remove spectra..."
+    menuItemZoomInX<-"Zoom in (X)"
+    menuItemZoomOutX<-"Zoom out (X)"
+    menuItemZoomInY<-"Zoom in (Y)"
+    menuItemZoomOutY<-"Zoom out (Y)"
+    menuItemSetZoom<-"Set zoom..."
+    currentItem<-menuItemAdd
+    while(!stopTMP){
+      menuList<-c(menuItemAdd,menuItemZoomInX,menuItemZoomOutX,menuItemZoomInY,
+          menuItemZoomOutY,
+          "Move left",
+          "Move right",
+          "Move up (1D)",
+          "Move down (1D)",
+          "Increase intensity (1D)",
+          "Decrease intensity (1D)",
+          "Move up (2D)",
+          "Move down (2D)",
+          "Increase contour level (2D)",
+          "Decrease contour level (2D)",
+          "Increase intensity (2D)",
+          "Decrease intensity (2D)",
+          menuItemSetZoom,
+          "Set offset and scale of selected spectra..."#,
+          #"Change colors..."
+          )
+      #if not 2D: remove up and down
+      TMP1D<-FALSE
+      TMP2D<-FALSE
+      if(mrbin.env$mrbinparam$dimension=="1D"&
+           !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+        TMP1D<-TRUE
+      }
+      if(mrbin.env$mrbinparam$dimension=="2D"&
+           !is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+        TMP2D<-TRUE
+      }
+      if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)) TMP1D<-TRUE
+      if(!is.null(mrbin.env$mrbinTMP$additionalPlots2D)) TMP2D<-TRUE
+      if(!TMP2D){
+        menuList<-menuList[!menuList%in%c(menuItemZoomInY,menuItemZoomOutY,
+                            "Move up (2D)","Move down (2D)",
+                            "Increase contour level (2D)",
+                            "Decrease contour level (2D)")]
+      }
+      if(!TMP1D){
+        menuList<-menuList[!menuList%in%c("Move up (1D)",
+          "Move down (1D)")]
+      }
+      menuItem<-utils::select.list(menuList,
+                   preselect=currentItem,
+                   title ="Bin size [ppm]: ",graphics=TRUE)
+      if(length(menuItem)==0|menuItem==""){
+        stopTMP<-TRUE
+      } else {
+        currentItem<-menuItem
+      }
+      if(menuItem=="Move left") left(refreshPlot=FALSE)
+      if(menuItem=="Move right") right(refreshPlot=FALSE)
+      if(menuItem=="Move up (2D)") up(refreshPlot=FALSE)
+      if(menuItem=="Move down (2D)") down(refreshPlot=FALSE)
+      if(menuItem=="Move up (1D)"){
+        #mrbin.env$mrbinplot$intensityOffset<-
+        setOffset(mrbin.env$mrbinplot$intensityOffset-
+            sort(mrbin.env$mrbinTMP$additionalPlots1D[[1]])[ceiling(length(mrbin.env$mrbinTMP$additionalPlots1D[[1]])*.99)]/5)*mrbin.env$mrbinplot$intensityScale
+      }
+      if(menuItem=="Move down (1D)"){
+        #mrbin.env$mrbinplot$intensityOffset<-
+        setOffset(mrbin.env$mrbinplot$intensityOffset+
+             sort(mrbin.env$mrbinTMP$additionalPlots1D[[1]])[ceiling(length(mrbin.env$mrbinTMP$additionalPlots1D[[1]])*.99)]/5)*mrbin.env$mrbinplot$intensityScale
+      }
+
+      if(menuItem==menuItemZoomOutX) zoomOut(refreshPlot=FALSE,y=FALSE)
+      if(menuItem==menuItemZoomOutY) zoomOut(refreshPlot=FALSE,x=FALSE)
+      if(menuItem==menuItemZoomInX) zoomIn(refreshPlot=FALSE,y=FALSE)
+      if(menuItem==menuItemZoomInY) zoomIn(refreshPlot=FALSE,x=FALSE)
+      if(menuItem==menuItemSetZoom) zoom(refreshPlot=FALSE)
+      if(menuItem=="Increase contour level (2D)") contPlus(refreshPlot=FALSE)
+      if(menuItem=="Decrease contour level (2D)") contMin(refreshPlot=FALSE)
+      if(menuItem=="Decrease intensity (1D)") intMin(refreshPlot=FALSE)
+      if(menuItem=="Increase intensity (1D)") intPlus(refreshPlot=FALSE)
+      if(menuItem=="Decrease intensity (2D)") intMin(refreshPlot=FALSE,dimension="2D")
+      if(menuItem=="Increase intensity (2D)") intPlus(refreshPlot=FALSE,dimension="2D")
+      if(menuItem=="Set offset and scale of selected spectra..."){
+          menuItem3<-utils::select.list(c("Scale or offset 1D spectra",
+                     "Scale or offset 2D spectra"),
+                     preselect="Scale or offset 1D spectra",
+                     title ="Please select",graphics=TRUE)
+          if(menuItem3=="Scale or offset 1D spectra"&!
+            is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
+            menuItem4<-utils::select.list(
+              mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1],
+                     #preselect="Remove 1D spectra",
+                     title ="Select spectrum",graphics=TRUE)
+            if(!(length(menuItem4)==0|menuItem4=="")){
+              scaleTMP<-readline(prompt=paste("New scaling factor, press enter to keep ",
+                                      mrbin.env$mrbinTMP$additionalPlots1DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),7]#scaling
+                                      ,": ",sep=""))
+              if(!scaleTMP==""){
+                  mrbin.env$mrbinTMP$additionalPlots1DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),7]<-scaleTMP
+              }
+              offsetTMP<-readline(prompt=paste("New offset factor, press enter to keep ",
+                                   mrbin.env$mrbinTMP$additionalPlots1DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),9]#offset
+                                      ,": ",sep=""))
+              if(!offsetTMP==""){
+                  mrbin.env$mrbinTMP$additionalPlots1DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),9]<-offsetTMP
+              }
+            }
+          }
+          if(menuItem3=="Scale or offset 2D spectra"&!
+            is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
+            menuItem4<-utils::select.list(
+              mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1],
+                     #preselect="Remove 1D spectra",
+                     title ="Select spectrum",graphics=TRUE)
+            if(!(length(menuItem4)==0|menuItem4=="")){
+              scaleTMP<-readline(prompt=paste("New scaling factor, press enter to keep ",
+                                      mrbin.env$mrbinTMP$additionalPlots2DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),7]#scaling
+                                      ,": ",sep=""))
+              if(!scaleTMP==""){
+                  mrbin.env$mrbinTMP$additionalPlots2DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),7]<-scaleTMP
+              }
+              offsetTMP<-readline(prompt=paste("New offset factor, press enter to keep ",
+                                   mrbin.env$mrbinTMP$additionalPlots2DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),9]#offset
+                                      ,": ",sep=""))
+              if(!offsetTMP==""){
+                  mrbin.env$mrbinTMP$additionalPlots2DMetadata[
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),9]<-offsetTMP
+              }
+            }
+          }
+
+      }
+      if(menuItem==menuItemAdd){
+        menuItem2<-utils::select.list(c("Add spectra",
+          "Remove spectra"#,"Hide or unhide spectra"
+          ),
+                     preselect="Add spectra",
+                     title ="Please select",graphics=TRUE)
+        if(menuItem2=="Add spectra"){
+          #Ask for dimension
+          menuItem3<-utils::select.list(c("Add 1D spectra",
+          "Add 2D spectra"),
+                     preselect="Add 1D spectra",
+                     title ="Please select",graphics=TRUE)
+          if(menuItem3=="Add 1D spectra") mrbin.env$mrbinparam$dimension<-"1D"
+          if(menuItem3=="Add 2D spectra") mrbin.env$mrbinparam$dimension<-"2D"
+          if(!(length(menuItem3)==0|menuItem3=="")){
+            foldersTMP<-selectFolders()
+            if(!foldersTMP=="stop"&length(mrbin.env$mrbinparam$NMRfolders)>0){
+              for(iFolders in 1:length(mrbin.env$mrbinparam$NMRfolders)){
+                addToPlot(folder=mrbin.env$mrbinparam$NMRfolders[iFolders]
+                  #,dimension=dimension
+                  )
+              }
+            }
+          }
+        }
+        if(menuItem2=="Remove spectra"){
+          menuItem3<-utils::select.list(c("Remove 1D spectra",
+                     "Remove 2D spectra"),
+                     preselect="Remove 1D spectra",
+                     title ="Please select",graphics=TRUE)
+          if(menuItem3=="Remove 1D spectra"&!
+            is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
+            menuItem4<-utils::select.list(
+              mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1],
+                     #preselect="Remove 1D spectra",
+                     title ="Remove spectrum",graphics=TRUE)
+            if(!(length(menuItem4)==0|menuItem4=="")){
+              removeFromPlot(folder=menuItem4,
+                dimension="1D")
+            }
+          }
+          if(menuItem3=="Remove 2D spectra"&!
+            is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
+            menuItem4<-utils::select.list(
+              mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1],
+                     #preselect="Remove 1D spectra",
+                     title ="Remove spectrum",graphics=TRUE)
+            if(!(length(menuItem4)==0|menuItem4=="")){
+              removeFromPlot(folder=menuItem4,
+                dimension="2D")
+            }
+          }
+        }
+        #if(menuItem2=="Hide or unhide spectra"){
+        #}
+      }
+      #if(menuItem=="Remove spectra...")
+
+      plotMultiNMR()
+      #utils::flush.console()
+    }
+  }
+
 }

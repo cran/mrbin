@@ -30,6 +30,7 @@ use NMR data and noise levels from the global variables mrbin.env$bins and
 mrbin.env$mrbinTMP.
 }
 \examples{
+ resetEnv()
  Example<-mrbin(silent=TRUE,
                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
                    binwidth1D=0.005,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,7.5,10,156),

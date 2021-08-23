@@ -4,7 +4,14 @@
 \alias{zoomIn}
 \title{A function for changing plotNMR plots.}
 \usage{
-zoomIn()
+zoomIn(refreshPlot = TRUE, x = TRUE, y = TRUE)
+}
+\arguments{
+\item{refreshPlot}{Refresh plot automatically. Defaults to TRUE}
+
+\item{x}{Change x axis? Defaults to TRUE}
+
+\item{y}{Change y axis? Defaults to TRUE}
 }
 \value{
 {None}

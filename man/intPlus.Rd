@@ -4,7 +4,12 @@
 \alias{intPlus}
 \title{A function for changing plotNMR plots.}
 \usage{
-intPlus()
+intPlus(dimension = "1D", refreshPlot = TRUE)
+}
+\arguments{
+\item{dimension}{Dimension to use. Defaults to "1D"}
+
+\item{refreshPlot}{Refresh plot automatically. Defaults to TRUE}
 }
 \value{
 {None}
