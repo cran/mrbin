@@ -133,7 +133,7 @@ atnv<-function(NMRdata=NULL,noiseLevels=NULL){
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage(paste("mrbin ","1.6.0",#as.character(utils::packageVersion("mrbin")),
+    packageStartupMessage(paste("mrbin ","1.6.1",#as.character(utils::packageVersion("mrbin")),
       "\n","Please check regularly for updates at https://CRAN.R-project.org/package=mrbin",sep=""))
 }
 
@@ -3074,6 +3074,7 @@ readNMR2<-function(onlyTitles=FALSE){#Read NMR spectral data
 #' @param dimension Defines the data dimension, "1D" or "2D". Only used if not NULL
 #' @param NMRvendor Defines the NMR manufacturer, default is "Bruker"
 #' @param useAsNames How should sample names be generated
+#' @param add Add spectra to existing list, or replace existing spectra. Default is TRUE
 #' @return {none}
 #' @export
 #' @examples
@@ -3082,12 +3083,17 @@ readNMR2<-function(onlyTitles=FALSE){#Read NMR spectral data
 addToPlot<-function(folder=NULL,
            dimension="1D",
            NMRvendor="Bruker",
-           useAsNames="Folder names"){#Read NMR spectral data
+           useAsNames="Folder names",
+           add=TRUE){#Read NMR spectral data
    NMRdataList<-readNMR(folder=folder,
            dimension=dimension,
            NMRvendor=NMRvendor,
            useAsNames=useAsNames)
    if(dimension=="1D"){
+     if(!add){
+       mrbin.env$mrbinTMP$additionalPlots1D<-NULL
+       mrbin.env$mrbinTMP$additionalPlots1DMetadata<-NULL
+     }
      if( is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
        mrbin.env$mrbinTMP$additionalPlots1D<-list(NMRdataList$currentSpectrum)
      } else {
@@ -3111,6 +3117,10 @@ addToPlot<-function(folder=NULL,
          ))
    }
    if(dimension=="2D"){
+     if(!add){
+       mrbin.env$mrbinTMP$additionalPlots2D<-NULL
+       mrbin.env$mrbinTMP$additionalPlots2DMetadata<-NULL
+     }
      if( is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
        mrbin.env$mrbinTMP$additionalPlots2D<-list(NMRdataList$currentSpectrum)
      } else {
@@ -3150,27 +3160,27 @@ removeFromPlot<-function(folder=NULL,
            dimension="1D"){#
    if(dimension=="1D"){
      if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
-       if(folder%in%mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]){
+       if(folder%in%mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5]){
          if(nrow(mrbin.env$mrbinTMP$additionalPlots1DMetadata)==1){
             mrbin.env$mrbinTMP$additionalPlots1DMetadata<-NULL
             mrbin.env$mrbinTMP$additionalPlots1D<-NULL
          } else {
-           deleteTMP<-which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==folder)
+           deleteTMP<-which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5]==folder)
            mrbin.env$mrbinTMP$additionalPlots1D[[deleteTMP]]<-NULL
            mrbin.env$mrbinTMP$additionalPlots1DMetadata<-
              mrbin.env$mrbinTMP$additionalPlots1DMetadata[-deleteTMP,,drop=FALSE]
          }
-       }
+       } else {message("folder name not found. ")}
      }
    }
    if(dimension=="2D"){
      if(!is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
-       if(folder%in%mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]){
+       if(folder%in%mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5]){
          if(nrow(mrbin.env$mrbinTMP$additionalPlots2DMetadata)==1){
             mrbin.env$mrbinTMP$additionalPlots2DMetadata<-NULL
             mrbin.env$mrbinTMP$additionalPlots2D<-NULL
          } else {
-           deleteTMP<-which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==folder)
+           deleteTMP<-which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5]==folder)
            mrbin.env$mrbinTMP$additionalPlots2D[[deleteTMP]]<-NULL
            mrbin.env$mrbinTMP$additionalPlots2DMetadata<-
              mrbin.env$mrbinTMP$additionalPlots2DMetadata[-deleteTMP,,drop=FALSE]
@@ -4150,16 +4160,32 @@ contMin<-function(refreshPlot=TRUE){#decrease plot intensity
 
 zoom<-function(left=NULL,right=NULL,top=NULL,bottom=NULL,refreshPlot=TRUE){
  #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
-   if(is.null(left)) stop("Please set left limit\n")
-   if(is.null(right)) stop("Please set right limit\n")
-   if(is.matrix(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
-      if(is.null(top)) stop("Please set top limit\n")
-      if(is.null(bottom)) stop("Please set bottom limit\n")
+   if(is.null(left)){
+      left<-readline(prompt=paste("Please set left limit, press enter to keep ",
+                              mrbin.env$mrbinplot$plotRegion[1],": ",sep=""))
+      if(left=="") left<-mrbin.env$mrbinplot$plotRegion[1]
    }
-   mrbin.env$mrbinplot$plotRegion[1]<-left
-   mrbin.env$mrbinplot$plotRegion[2]<-right
-   mrbin.env$mrbinplot$plotRegion[3]<-top
-   mrbin.env$mrbinplot$plotRegion[4]<-bottom
+   if(is.null(right)){
+      right<-readline(prompt=paste("Please set right limit, press enter to keep ",
+                              mrbin.env$mrbinplot$plotRegion[2],": ",sep=""))
+      if(right=="") right<-mrbin.env$mrbinplot$plotRegion[2]
+   }
+   #if(is.matrix(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
+   if(is.null(top)){
+      top<-readline(prompt=paste("Please set top limit, press enter to keep ",
+                              mrbin.env$mrbinplot$plotRegion[3],": ",sep=""))
+      if(top=="") top<-mrbin.env$mrbinplot$plotRegion[3]
+   }
+   if(is.null(bottom)){
+      bottom<-readline(prompt=paste("Please set bottom limit, press enter to keep ",
+                              mrbin.env$mrbinplot$plotRegion[4],": ",sep=""))
+      if(bottom=="") bottom<-mrbin.env$mrbinplot$plotRegion[4]
+   }
+   #}
+   mrbin.env$mrbinplot$plotRegion[1]<-as.numeric(left)
+   mrbin.env$mrbinplot$plotRegion[2]<-as.numeric(right)
+   mrbin.env$mrbinplot$plotRegion[3]<-as.numeric(top)
+   mrbin.env$mrbinplot$plotRegion[4]<-as.numeric(bottom)
    if(refreshPlot)  plotNMR()
  #}
 }
@@ -5214,12 +5240,17 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
 #'        dimensions=c("2D","1D","1D","1D"),zoom=c(2.8,2.3,20,55),
 #'        intensity1D=32,hideMenu=TRUE)
 
-mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,zoom=NULL){
+mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
+  zoom=NULL){
   mrbin.env$mrbinTMP$currentSpectrumOriginal<-NULL
   if(!is.null(folders)){
     if(is.null(dimensions)) dimensions<-rep("1D",length(folders))
-    for(iTMP in 1:length(folders))
-       addToPlot(folder=folders[iTMP],dimension=dimensions[iTMP])
+    addToPlot(folder=folders[1],dimension=dimensions[1],add=FALSE)
+    if(length(folders)>1){
+      for(iTMP in 2:length(folders)){
+         addToPlot(folder=folders[iTMP],dimension=dimensions[iTMP],add=TRUE)
+      }
+    }
   }
   if(!is.null(zoom)) zoom(zoom[1],zoom[2],zoom[3],zoom[4],refreshPlot=FALSE)
   if(!is.null(intensity1D)) intMin(value=intensity1D,refreshPlot=FALSE)
@@ -5269,7 +5300,10 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,zo
         menuList<-menuList[!menuList%in%c(menuItemZoomInY,menuItemZoomOutY,
                             "Move up (2D)","Move down (2D)",
                             "Increase contour level (2D)",
-                            "Decrease contour level (2D)")]
+                            "Decrease contour level (2D)",
+                            "Increase intensity (2D)",
+                            "Decrease intensity (2D)"
+                            )]
       }
       if(!TMP1D){
         menuList<-menuList[!menuList%in%c("Move up (1D)",
@@ -5310,57 +5344,61 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,zo
       if(menuItem=="Decrease intensity (2D)") intMin(refreshPlot=FALSE,dimension="2D")
       if(menuItem=="Increase intensity (2D)") intPlus(refreshPlot=FALSE,dimension="2D")
       if(menuItem=="Set offset and scale of selected spectra..."){
-          menuItem3<-utils::select.list(c("Scale or offset 1D spectra",
-                     "Scale or offset 2D spectra"),
-                     preselect="Scale or offset 1D spectra",
-                     title ="Please select",graphics=TRUE)
+          if(TMP1D&TMP2D){
+            menuItem3<-utils::select.list(c("Scale or offset 1D spectra",
+                       "Scale or offset 2D spectra"),
+                       preselect="Scale or offset 1D spectra",
+                       title ="Please select",graphics=TRUE)
+          } else {
+            if(TMP1D) menuItem3<-"Scale or offset 1D spectra"
+            if(TMP2D) menuItem3<-"Scale or offset 2D spectra"
+          }
           if(menuItem3=="Scale or offset 1D spectra"&!
             is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
             menuItem4<-utils::select.list(
-              mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1],
+              mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5],
                      #preselect="Remove 1D spectra",
                      title ="Select spectrum",graphics=TRUE)
             if(!(length(menuItem4)==0|menuItem4=="")){
               scaleTMP<-readline(prompt=paste("New scaling factor, press enter to keep ",
                                       mrbin.env$mrbinTMP$additionalPlots1DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),7]#scaling
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5]==menuItem4),7]#scaling
                                       ,": ",sep=""))
               if(!scaleTMP==""){
                   mrbin.env$mrbinTMP$additionalPlots1DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),7]<-scaleTMP
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5]==menuItem4),7]<-scaleTMP
               }
               offsetTMP<-readline(prompt=paste("New offset factor, press enter to keep ",
                                    mrbin.env$mrbinTMP$additionalPlots1DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),9]#offset
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5]==menuItem4),9]#offset
                                       ,": ",sep=""))
               if(!offsetTMP==""){
                   mrbin.env$mrbinTMP$additionalPlots1DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1]==menuItem4),9]<-offsetTMP
+                                        which(mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5]==menuItem4),9]<-offsetTMP
               }
             }
           }
           if(menuItem3=="Scale or offset 2D spectra"&!
             is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
             menuItem4<-utils::select.list(
-              mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1],
-                     #preselect="Remove 1D spectra",
+              mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5],
                      title ="Select spectrum",graphics=TRUE)
             if(!(length(menuItem4)==0|menuItem4=="")){
               scaleTMP<-readline(prompt=paste("New scaling factor, press enter to keep ",
                                       mrbin.env$mrbinTMP$additionalPlots2DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),7]#scaling
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5]==menuItem4),7]#scaling
                                       ,": ",sep=""))
               if(!scaleTMP==""){
                   mrbin.env$mrbinTMP$additionalPlots2DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),7]<-scaleTMP
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5]==menuItem4),7]<-scaleTMP
               }
               offsetTMP<-readline(prompt=paste("New offset factor, press enter to keep ",
                                    mrbin.env$mrbinTMP$additionalPlots2DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),9]#offset
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5]==menuItem4),9]#offset
                                       ,": ",sep=""))
               if(!offsetTMP==""){
                   mrbin.env$mrbinTMP$additionalPlots2DMetadata[
-                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1]==menuItem4),9]<-offsetTMP
+                                        which(mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5]==menuItem4),9]<-offsetTMP
               }
             }
           }
@@ -5392,14 +5430,19 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,zo
           }
         }
         if(menuItem2=="Remove spectra"){
+          if(TMP1D&TMP2D){
           menuItem3<-utils::select.list(c("Remove 1D spectra",
                      "Remove 2D spectra"),
                      preselect="Remove 1D spectra",
                      title ="Please select",graphics=TRUE)
+          } else {
+            if(TMP1D) menuItem3<-"Remove 1D spectra"
+            if(TMP2D) menuItem3<-"Remove 2D spectra"
+          }
           if(menuItem3=="Remove 1D spectra"&!
             is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
             menuItem4<-utils::select.list(
-              mrbin.env$mrbinTMP$additionalPlots1DMetadata[,1],
+              mrbin.env$mrbinTMP$additionalPlots1DMetadata[,5],
                      #preselect="Remove 1D spectra",
                      title ="Remove spectrum",graphics=TRUE)
             if(!(length(menuItem4)==0|menuItem4=="")){
@@ -5410,7 +5453,7 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,zo
           if(menuItem3=="Remove 2D spectra"&!
             is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
             menuItem4<-utils::select.list(
-              mrbin.env$mrbinTMP$additionalPlots2DMetadata[,1],
+              mrbin.env$mrbinTMP$additionalPlots2DMetadata[,5],
                      #preselect="Remove 1D spectra",
                      title ="Remove spectrum",graphics=TRUE)
             if(!(length(menuItem4)==0|menuItem4=="")){

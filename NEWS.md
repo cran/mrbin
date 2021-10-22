@@ -1,5 +1,10 @@
 # mrbin News
 
+## Version 1.6.1
+
+* Small bug fixes in the mrplot function
+
+
 ## Version 1.6.0
 
 * Bin intensities are now pseudo-integrals (mean of data points times range (1D), or times area (2D)). So far, intensities were the mean of data points in the bin range. For simple rectangular bins, results are identical apart from a scaling factor, so most data analysis methods will give identical results. To enforce the old behavior, use mrbin(parameters=list(useMeanIntensityForBins=TRUE))
@@ -10,6 +15,7 @@
 * Speed improvements for displaying and saving the final results plot 
 * New plotting function mrplot()
 * RStudio plotting issue solved: Plots are now refreshed so the current plot is displayed timely
+
 
 ## Version 1.5.2
 

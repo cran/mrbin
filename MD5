@@ -1,13 +1,13 @@
-c6edf6812baaa508a879d2f43251461a *DESCRIPTION
+030f71d85d13c92ad2252aeecc1b60e4 *DESCRIPTION
 e5578717e69ca52629804dcce59e0bd5 *NAMESPACE
-bb0c5170b8a3b43f38045a0cbb1a68bc *NEWS.md
-9c56410747195f0f623698afa79e4156 *R/mrbin.R
+a55321c4ff212a8d74ea3e863e974f6f *NEWS.md
+25bb437f4b7fc57257ed8006c32187d9 *R/mrbin.R
 89aefbf3b705597ef0bfdddc95bc2c34 *README.md
 03926f300ad692c7ebb7b51c977d67e6 *build/vignette.rds
 d7ee8641be175f4b08ac536579976112 *inst/CITATION
 90464a5eb4996b4c0ced6b4e791eb4d5 *inst/doc/mrbin.R
 380c0c3be12c9f1806d5854fcd4e5989 *inst/doc/mrbin.Rnw
-45b170f219488932f49e1be591cc568c *inst/doc/mrbin.pdf
+41bba49c0226ccf582542a282b266e59 *inst/doc/mrbin.pdf
 7b02c0e5793e4043060634d0ae0a151d *inst/extdata/1/10/pdata/10/1r
 0a67540dea70f95671702dc84c0d4896 *inst/extdata/1/10/pdata/10/proc
 b3c867d628a161ddac3ad3093d8a6dd6 *inst/extdata/1/10/pdata/10/procs
@@ -40,7 +40,7 @@ fb0523d1cf88b8fdc450de726bf57f2a *inst/extdata/3/12/pdata/10/procs
 656b1664906e3bd6f626d9713c4912e2 *inst/extdata/3/12/pdata/10/title
 9d61591a84e4dff5e728252dac2af2a8 *inst/extdata/mrbin.txt
 3bf522605cb84a474ee686f355d93f03 *man/PQNScaling.Rd
-29f92d180eb98ff971e9173e7bb2c951 *man/addToPlot.Rd
+9555b8b084f824dd6d6c2fe1d7249156 *man/addToPlot.Rd
 54a8f41f2499d3152b9153d2a539dcdb *man/atnv.Rd
 b9dcf06c6ef39ffce250ddba2d9743b2 *man/contMin.Rd
 f8f8d37beccc8c82a1419ca2908a6427 *man/contPlus.Rd
