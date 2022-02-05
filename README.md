@@ -1,8 +1,9 @@
 # mrbin - Magnetic Resonance Binning, Integration and Normalization
 
-Nuclear Magnetic Resonance (NMR) is widely used for metabolomics research. This 
-package uses spectral binning to convert 1D or 2D NMR data into a matrix of values 
-suitable for further data analysis and performs basic processing steps in a 
+Nuclear Magnetic Resonance is widely used for metabolite analysis. This 
+package is a collection for processing and analyzing metabolite data. The 
+function mrbin uses spectral binning to convert 1D or 2D NMR data into a matrix of 
+values suitable for further data analysis and performs basic processing steps in a 
 reproducible way. Negative values, a common issue in NMR data, are replaced by 
 positive values. All used parameters are stored in a readable text file and can 
 be restored from that file to enable exact reproduction of the data at a later 

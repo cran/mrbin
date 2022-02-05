@@ -15,7 +15,7 @@ removeFromPlot(folder = NULL, dimension = "1D")
 {none}
 }
 \description{
-This function removes a sepctrum from the plot list.
+This function removes a spectrum from the plot list.
 }
 \examples{
 \donttest{ removeFromPlot() }

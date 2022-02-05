@@ -1,5 +1,11 @@
 # mrbin News
 
+## Version 1.6.2
+
+* New function fia for analyzing predictive metabolomics models
+* Small bug fixes in the mrplot function
+
+
 ## Version 1.6.1
 
 * Small bug fixes in the mrplot function
@@ -10,7 +16,7 @@
 * Bin intensities are now pseudo-integrals (mean of data points times range (1D), or times area (2D)). So far, intensities were the mean of data points in the bin range. For simple rectangular bins, results are identical apart from a scaling factor, so most data analysis methods will give identical results. To enforce the old behavior, use mrbin(parameters=list(useMeanIntensityForBins=TRUE))
 * Multiple spectra are now shown in previews to visualize sample-to-sample variability 
 * PCA plots: When using more groups than available symbols (from pch), letter are now used to mark the groups. This also removes the warning messages generated in these cases.
-* Reading spectra without title does no longer create an error in readBruker(), however, such sepctra are still not shown in the spectrum browser as they are usually not of interest
+* Reading spectra without title does no longer create an error in readBruker(), however, such spectra are still not shown in the spectrum browser as they are usually not of interest
 * Before binning, folder list is checked to find missing folders. This is to avoid long calculation that end with a "could not open file" error. This uses the new readBruker() parameter checkFiles.
 * Speed improvements for displaying and saving the final results plot 
 * New plotting function mrplot()

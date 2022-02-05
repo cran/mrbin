@@ -1,4 +1,4 @@
-#mrbin - Collection of R functions for analyzing NMR metabolomics data.
+#mrbin - Collection of R functions for processing and analyzing metabolomics data.
 #Written by Matthias Klein, The Ohio State University
 #
 #Package: mrbin
@@ -9,8 +9,9 @@
 #           role = c("aut", "cre"),
 #           email = "klein.663@osu.edu",
 #           comment = c(ORCID = "0000-0001-7455-5381"))
-#Description: Nuclear Magnetic Resonance is widely used in the Life Sciences.
-#    This package converts 1D or 2D data into a matrix of values
+#Description: This package is a collection of functions for processing and
+#    analyzing metabolomics data. The mrbin function converts 1D or 2D nuclear
+#    magnetic resonance data into a matrix of values
 #    suitable for further data analysis and performs basic processing steps in a
 #    reproducible way. Negative values, a common issue in these data, are replaced
 #    by positive values. All used parameters are stored in a readable text file
@@ -23,6 +24,398 @@
 #' @importFrom stats heatmap median prcomp quantile sd
 #' @importFrom utils flush.console select.list write.csv
 NULL
+
+#' A function returning predicted values for use with the fia function.
+#'
+#' This function predicts group membership and returns a numeric vector with results.
+#' @param model A predictive model. Make sure to have loaded all required packages before starting this function
+#' @param dataSet A matrix or dataframe containing data, depending on what your predict function requires. Columns=features, rows=samples
+#' @param functionNamePredict The name of the prediction function. This only needs to be changed if the prediction function is not called predict
+#' @param parameterNameObject The name of the parameter for passing the model to the prediction function
+#' @param parameterNameData The name of the parameter for passing the data to the prediction function
+#' @param firstLevel Numeric value of first level or group. Usually 1 but for glm such as in the example this needs to be 0.
+#' @param dataFrameFlag Logical value indicating whether the data object is a data frame rather than a matrix.
+#' @param ... Optional, additional parameters that will be passed to the prediction function.
+#' @return A numeric (integer) vector of predicted group memberships.
+#' @export
+#' @examples
+#'  #First, define group membership and create the example feature data
+#'  group<-factor(c(rep("Group1",4),rep("Group2",5)))
+#'  names(group)<-paste("Sample",1:9,sep="")
+#'  dataset<-data.frame(
+#'    Feature1=c(5.1,5.0,6.0,2.9,4.8,4.6,4.9,3.8,5.1),
+#'    Feature2=c(2.6,4.0,3.2,1.2,3.1,2.1,4.5,6.1,1.3),
+#'    Feature3=c(3.1,6.1,5.8,5.1,3.8,6.1,3.4,4.0,4.4),
+#'    Feature4=c(5.3,5.2,3.1,2.7,3.2,2.8,5.9,5.8,3.1),
+#'    Feature5=c(3.2,4.4,4.8,4.9,6.0,3.6,6.1,3.9,3.5)
+#'    )
+#'  rownames(dataset)<-names(group)
+#'  #train a model - here we use a logit model instead of ANN as a demonstration
+#'  mod<-glm(group~Feature1+Feature2+Feature3+Feature4+Feature5,
+#'    data=data.frame(group=group,dataset),family="binomial")
+#'  predictWrapper(model=mod,dataSet=dataset,firstLevel=0,type="response")
+predictWrapper<-function(model,dataSet,functionNamePredict="predict",firstLevel=1,
+  parameterNameObject="object",parameterNameData="x",dataFrameFlag=FALSE,...){
+  if(dataFrameFlag) dataSet<-data.frame(dataSet)
+  predParam<-c(list(model,dataSet),...)
+  names(predParam)[1]<-parameterNameObject
+  names(predParam)[2]<-parameterNameData
+  predictionsTMP<-do.call(functionNamePredict,predParam)
+  if(is.matrix(predictionsTMP)){#tensorflow ANN output is matrix
+     predictionsFinal<-apply(predictionsTMP,1,which.max)
+  } else {
+     predictionsFinal<-round(predictionsTMP)
+  }
+  predictionsFinal<-predictionsFinal+1-firstLevel
+  return(predictionsFinal)
+}
+
+#' A function identifying features of importance.
+#'
+#' This function finds features that can change the outcomes of a model's prediction.
+#' Example: fia=1.00 means single compound found in all but 0 percent of samples.
+#' fia=2.45 indicates this compound is found in pairs in all but 45 percent of tested samples
+#' A function named predict needs to be present for this to work. If the function name
+#' of the prediction function is different, the function name has to be provided in
+#' the parameter functionNamePredict.
+#' @param model A predictive model. Make sure to have loaded all required packages before starting this function
+#' @param dataSet An object containing data, columns=features, rows=samples. This should be either a matrix or a dataframe, depending on which of these two the specific prediction function requires
+#' @param factors A factor vector with group membership of each sample in the data set. Order of levels must correspond to the number predicted by the model
+#' @param nSeed Number of times that the test will be repeated, selecting different random features
+#' @param numberOfSamples Number of samples that will be randomly chosen from each group
+#' @param maxFeatures Maximum number of features that will be tested. Larger numbers will be split into child nodes without testing to increase speed
+#' @param innerLoop Number of repeated loops to test additional child nodes
+#' @param verbose A logical vector to turn messages on or off
+#' @param maxNumberAllTests Combinations of features of this length or shorter will not be split in half to create two children, but into multiple children with one feature left out each. This is done make sure no combination is missed.
+#' @param firstLevel Numeric value of first level or group. Usually 1 but for glm such as in the example this needs to be 0.
+#' @param saveMemory Save memory by performing predictions one by one, which will be slower.
+#' @param functionNamePredict The name of the prediction function. This only needs to be changed if the prediction function is not called predict
+#' @param parameterNameObject The name of the parameter for passing the model to the prediction function
+#' @param parameterNameData The name of the parameter for passing the data to the prediction function
+#' @param ... Optional, additional parameters that will be passed to the prediction function.
+#' @return A list of results: scores contains vectors of fia scores for each predicted group; scoresSummary A vector of fia scores for all predicted sample; fiaListPerSample A list of important combinations of features for each predicted sample; fiaMatrix A list of fia scores for each predicted group.
+#' @export
+#' @examples
+#'  #First, define group membership and create the example feature data
+#'  group<-factor(c(rep("Group1",4),rep("Group2",5)))
+#'  names(group)<-paste("Sample",1:9,sep="")
+#'  dataset<-data.frame(
+#'    Feature1=c(5.1,5.0,6.0,2.9,4.8,4.6,4.9,3.8,5.1),
+#'    Feature2=c(2.6,4.0,3.2,1.2,3.1,2.1,4.5,6.1,1.3),
+#'    Feature3=c(3.1,6.1,5.8,5.1,3.8,6.1,3.4,4.0,4.4),
+#'    Feature4=c(5.3,5.2,3.1,2.7,3.2,2.8,5.9,5.8,3.1),
+#'    Feature5=c(3.2,4.4,4.8,4.9,6.0,3.6,6.1,3.9,3.5)
+#'    )
+#'  rownames(dataset)<-names(group)
+#'  #train a model - here we use a logit model instead of ANN as a demonstration
+#'  mod<-glm(group~Feature1+Feature2+Feature3+Feature4+Feature5,
+#'    data=data.frame(group=group,dataset),family="binomial")
+#'  fiaResults<-fia(model=mod,dataSet=dataset,factors=group,parameterNameData="newdata",
+#'    firstLevel=0,type="response")
+#'  fiaResults$scores
+fia<-function(model,dataSet,factors,nSeed=3,numberOfSamples=100,
+  maxFeatures=10000,innerLoop=100,verbose=TRUE,maxNumberAllTests=10,firstLevel=1,
+  saveMemory=FALSE,functionNamePredict="predict",parameterNameObject="object",
+  parameterNameData="x",...){
+  digitDict<-c(1:9,0,letters,LETTERS)#replace number>9 with single digit characters
+  seedList=(1:nSeed-1)*100
+  if(is.factor(factors)){
+    factors<-droplevels(factors)
+  } else {
+    factors<-factor(factors)
+  }
+  dataFrameFlag<-FALSE
+  if(is.data.frame(dataSet)){
+    dataSet<-as.matrix(dataSet)
+    dataFrameFlag<-TRUE
+  }
+  factorsDict<-1:nlevels(factors)-1#-1 is necessary for tensorflow, otherwise usually not
+  names(factorsDict)<-levels(factors)
+  lVector<-apply(dataSet,2,quantile,.01)
+  hVector<-apply(dataSet,2,quantile,.99)
+  predTMP<-predictWrapper(model=model,dataSet=dataSet,firstLevel=firstLevel,
+    functionNamePredict=functionNamePredict,parameterNameObject=parameterNameObject,
+    parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag
+    ,...
+    )
+  predAll<-names(factorsDict)[predTMP]
+  #Create a sample list
+  sampleList<-matrix(NA,nrow=nlevels(factors),ncol=min(c(numberOfSamples,
+    nrow(dataSet))))
+  sampleList2<-sampleList
+  for(j in 1:nlevels(factors)){#pick a subset of all samples for testing
+     set.seed(1)     #select samples that are predicted correctly
+     samplesTMP<-factors==levels(factors)[j]&factors==predAll
+     if(sum(samplesTMP)==0) message("No samples were present or correctly predicted for ",levels(factors)[j])
+     repSampleList<-sample(which(samplesTMP),min(c(numberOfSamples,sum(samplesTMP))))
+     sampleList[j,1:length(repSampleList)]<-repSampleList
+     sampleList2[j,1:length(repSampleList)]<- rep(levels(factors)[j],length(repSampleList))
+  }
+  sampleVector<-as.vector(sampleList2)
+  names(sampleVector)<-as.vector(sampleList)
+  sampleVector<-sampleVector[!is.na(sampleVector)]
+  samplesTested<-vector("list",length(sampleVector))
+  names(samplesTested) <- names(sampleVector)
+  for(i in 1:length(samplesTested)){
+    samplesTested[[i]]<-list()
+  }
+  samplesPositive<-samplesTested
+  samplesTestedMultiple<-samplesPositive#save pairs, triples here
+  samplesTestedAdditional<-samplesPositive#anything left in the list after all iterations to be saved here
+  positiveFeatures<-NULL
+  fiaListPerSample<-vector("list",length(sampleVector))
+  names(fiaListPerSample) <- names(sampleVector)
+  #for each sample, save single important features
+  if(verbose){
+    message("Testing single features\n0% ",appendLF = FALSE)
+    flush.console()
+  }
+  stepSizePercent<-20
+  steps<-1
+  irepSample<-1
+  for (irepSample in 1:length(sampleVector)){ #loop over all selected samples
+    repSample<-as.numeric(names(sampleVector))[irepSample]
+    dataTMP<-dataSet[rep(repSample,2*ncol(dataSet)),,drop=FALSE]
+    dataTMP[cbind(1:ncol(dataSet),1:ncol(dataSet))]<-
+      lVector[1:ncol(dataSet)] #replace value by low value
+    dataTMP[cbind(ncol(dataSet)+1:ncol(dataSet),1:ncol(dataSet))]<-
+      hVector[1:ncol(dataSet)] #replace value by high value
+    predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
+      functionNamePredict=functionNamePredict,parameterNameObject=parameterNameObject,
+      parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag
+      ,...
+      )
+    pred<-names(factorsDict)[predTMP]
+    iSingle<-1
+    for(iSingle in 1:ncol(dataSet)){
+      if(sum(!pred[c(iSingle,iSingle+ncol(dataSet))]==
+        sampleVector[as.character(repSample)])>0){#if low levels were still correct, check high  levels
+          samplesPositive[[as.character(repSample)]]<-c(
+             samplesPositive[[as.character(repSample)]],colnames(dataSet)[iSingle])
+          positiveFeatures<-unique(c(positiveFeatures,colnames(dataSet)[iSingle]))
+      }
+    }
+    if(length(samplesPositive[[as.character(repSample)]])>0){
+      for(ifiaList in 1:length(samplesPositive[[as.character(repSample)]])){
+        if(!samplesPositive[[as.character(repSample)]][ifiaList] %in%
+          fiaListPerSample[[as.character(repSample)]]){
+          fiaListPerSample[[as.character(repSample)]]<-c(
+            fiaListPerSample[[as.character(repSample)]],
+            samplesPositive[[as.character(repSample)]][ifiaList])
+        }
+      }
+    }
+    if(irepSample/length(sampleVector)>=steps*stepSizePercent/100){
+      if(verbose){
+        message(steps*stepSizePercent,"% ",appendLF = FALSE)
+        flush.console()
+        if(irepSample==length(sampleVector) ) message("\n",appendLF = FALSE)
+      }
+      steps<-steps+1
+    }
+  }
+  samplesTestedSingle<-samplesPositive
+  if(verbose){
+     message("Testing combinations of features\n0% ",appendLF = FALSE)
+     flush.console()
+  }
+  stepSizePercent<-20
+  steps<-1
+  steps2<-1
+  iSeed2<-1#for debugging
+  for(iSeed2 in 1:length(seedList)){ #repeat for different starting seeds
+    iSeed<-seedList[iSeed2]
+    fiaListL<-list()
+    irepSample<-1#debug
+    for (irepSample in 1:length(sampleVector)){ #loop over all selected samples
+      repSample<-as.numeric(names(sampleVector))[irepSample]
+      i2<-1
+      i3<-"1."#. means do not test
+      fiaResults <- vector("list", ceiling(log2(ncol(dataSet)))+10)
+      for(iTMP in 1:length(fiaResults)){
+        fiaResults[[iTMP]] <- list()
+      }
+      #remove positive single hits
+      positiveSingleTMP<-setdiff(colnames(dataSet),
+          samplesTestedSingle[[as.character(repSample)]])
+      if(length(positiveSingleTMP)>0) fiaResults[[i2]][[i3]]<-positiveSingleTMP
+      iInnerLoop<-1
+      for(iInnerLoop in 1:innerLoop){
+        seedInnerLoop<-(iInnerLoop-1)*1000
+        i2<-1
+        for(i2 in 1:length(fiaResults)){
+         if(length(fiaResults[[i2]])>0){
+           i3TMP<-names(fiaResults[[i2]])#to avoid skipping after deleting entries
+           if(!saveMemory){
+             if(i2==1|length(fiaResults[[i2]][[1]])>=maxFeatures){
+               pred2=rep("",2*length(fiaResults[[i2]]))
+             } else {
+               dataTMP<-dataSet[rep(repSample,2*length(fiaResults[[i2]])),,drop=FALSE]
+               for(iPredTMP in 1:length(fiaResults[[i2]])){
+                 dataTMP[iPredTMP,fiaResults[[i2]][[iPredTMP]]]<-
+                   lVector[fiaResults[[i2]][[iPredTMP]]] #replace value by low value
+                 dataTMP[length(fiaResults[[i2]])+iPredTMP,fiaResults[[i2]][[iPredTMP]]]<-
+                   hVector[fiaResults[[i2]][[iPredTMP]]] #replace value by high value
+               }
+               predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
+                 functionNamePredict=functionNamePredict,
+                 parameterNameObject=parameterNameObject,
+                 parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,...)
+               pred2<-names(factorsDict)[predTMP]
+             }
+           }
+           i3b<-1
+           for(i3b in 1:length(i3TMP)){
+            i3<-i3TMP[i3b]
+            if(saveMemory){
+              if(i2==1|length(fiaResults[[i2]][[i3]])>=maxFeatures){
+                pred<-"" #first step(s) assumed to be positive
+              } else {
+                 dataTMP<-dataSet[c(repSample,repSample),,drop=FALSE]
+                 dataTMP[1,fiaResults[[i2]][[i3]]]<-lVector[fiaResults[[i2]][[i3]]] #replace value i by low value
+                 dataTMP[2,fiaResults[[i2]][[i3]]]<-hVector[fiaResults[[i2]][[i3]]] #replace value i by high value
+                 predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
+                   functionNamePredict=functionNamePredict,
+                   parameterNameObject=parameterNameObject,
+                   parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,...)
+                 pred<-names(factorsDict)[predTMP]
+              }
+            } else {
+              pred<-pred2[c(i3b,length(i3TMP)+i3b)]
+            }
+            parentNameTMP<-substr(i3,1,nchar(i3)-2)
+            if(sum(!pred==sampleVector[as.character(repSample)])==0){#correct prediction
+               #if all children were checked and the parent is still there,
+               #this means the parent is positive while all children are negative.
+               #in this case the parent will be saved to the list and then deleted
+               if(which(digitDict==substr(i3,nchar(i3)-1,nchar(i3)-1))==
+                 (length(fiaResults[[i2]][[i3]])+1)){#this indicates that all children have been tested
+                 if(i2>1){#save parent to list
+                   if(!is.null(fiaResults[[i2-1]][[parentNameTMP]])){
+                     if(!list(fiaResults[[i2-1]][[parentNameTMP]])%in%
+                       samplesTestedMultiple[[as.character(repSample)]]){
+                         samplesTestedMultiple[[as.character(repSample)]]<-c(
+                           samplesTestedMultiple[[as.character(repSample)]],
+                           list(fiaResults[[i2-1]][[parentNameTMP]]))
+                     }
+                     fiaResults[[i2-1]][[parentNameTMP]]<-NULL
+                   }
+                 }
+               }
+               fiaResults[[i2]][[i3]]<-NULL
+            } else {#incorrect prediction, i.e. positive result
+              if(i2>1){#delete parent
+                fiaResults[[i2-1]][[parentNameTMP]]<-NULL
+              }
+              #split into two children by selecting half of features
+              if(length(fiaResults[[i2]][[i3]])>maxNumberAllTests){
+                 set.seed(i2+iSeed+seedInnerLoop)
+                 fiaResults[[i2+1]][[paste(i3,"1-",sep="",collapse="")]]<-
+                   sort(sample(fiaResults[[i2]][[i3]],ceiling(length(
+                   fiaResults[[i2]][[i3]])/2)),decreasing=TRUE)
+                 fiaResults[[i2+1]][[paste(i3,"2-",sep="",collapse="")]]<-
+                   (setdiff(fiaResults[[i2]][[i3]],fiaResults[[i2+1]][[
+                   paste(i3,"1-",sep="",collapse="")]]))
+              } else {#split low numbers manually by leaving one out each
+                 iLowNumbers<-length(fiaResults[[i2]][[i3]])
+                 for(iLowNumbers2 in 1:iLowNumbers){
+                    fiaResults[[i2+1]][[paste(i3,digitDict[iLowNumbers2]
+                      ,"-",sep="",collapse="")]]<-
+                      fiaResults[[i2]][[i3]][setdiff(
+                      1:iLowNumbers,iLowNumbers2)]
+                 }
+              }
+            }
+           }
+         }
+        }
+     }
+     samplesTestedAdditional[[as.character(repSample)]]<-unique(c(
+       samplesTestedAdditional[[as.character(repSample)]],unlist(
+       fiaResults[which(lapply(fiaResults,length)>0)],recursive =FALSE)))
+     if(length(samplesTestedMultiple[[as.character(repSample)]])>0){
+       for(ifiaList in 1:length(samplesTestedMultiple[[as.character(repSample)]])){
+        if(!samplesTestedMultiple[[as.character(repSample)]][ifiaList] %in%
+          fiaListPerSample[[as.character(repSample)]]){
+           fiaListPerSample[[as.character(repSample)]]<-c(
+              fiaListPerSample[[as.character(repSample)]],
+              samplesTestedMultiple[[as.character(repSample)]])
+        }
+       }
+     }
+     if(length(samplesTestedAdditional[[as.character(repSample)]])>0){
+       for(ifiaList in 1:length(samplesTestedAdditional[[as.character(repSample)]])){
+        if(!samplesTestedAdditional[[as.character(repSample)]][ifiaList] %in%
+          fiaListPerSample[[as.character(repSample)]]){
+           fiaListPerSample[[as.character(repSample)]]<-c(
+              fiaListPerSample[[as.character(repSample)]],
+              samplesTestedAdditional[[as.character(repSample)]])
+        }
+       }
+     }
+     steps2<-steps2+1
+     if(steps2/(length(seedList)*length(sampleVector))>=steps*stepSizePercent/100){
+       if(verbose){
+         message(steps*stepSizePercent,"% ",appendLF = FALSE)
+         flush.console()
+         if(steps2==(length(seedList)*length(sampleVector))) message("\n",appendLF=FALSE)
+       }
+       steps<-steps+1
+     }
+   }
+  }
+  #calculate fia scores
+  fiaMatrix<-matrix(NA,nrow=length(fiaListPerSample),ncol=ncol(dataSet))
+  colnames(fiaMatrix)<-colnames(dataSet)
+  rownames(fiaMatrix)<-names(fiaListPerSample)
+  for(ifiaMatrix in 1:length(fiaListPerSample)){
+    if(length(fiaListPerSample[[ifiaMatrix]])>0){
+       scoresTMP<-rank(unlist(lapply(fiaListPerSample[[ifiaMatrix]],length)),
+       ties.method ="first")
+       for(iscoresTMP in 1:length(scoresTMP)){
+        #now find lowest entry in order
+        matchTMP<-which(scoresTMP==iscoresTMP)
+        for(iscoresTMP2 in 1:length(fiaListPerSample[[ifiaMatrix]][[matchTMP]])){
+         if(is.na(fiaMatrix[ifiaMatrix,
+            fiaListPerSample[[ifiaMatrix]][[matchTMP]][iscoresTMP2]])){
+            fiaMatrix[ifiaMatrix,fiaListPerSample[[ifiaMatrix]][[matchTMP]]
+              [iscoresTMP2]]<-length(fiaListPerSample[[ifiaMatrix]][[matchTMP]])
+         }
+        }
+       }
+    }
+  }
+  #fia scores for the whole data set
+  fiaAllTMP<-apply(fiaMatrix,2,min,na.rm=TRUE)
+  fiaMatrixTMP<-fiaMatrix
+  fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
+  if(0 %in% fiaAllTMPTest) fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0]
+  fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
+  fiaAll<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(fiaAllTMP,nrow(fiaMatrixTMP)),
+     nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
+  #fia scores per group
+  scores<-vector("list",nlevels(factors))
+  names(scores)<-levels(factors)
+  for(iScores in 1:length(scores)){
+    if(sum(sampleVector[rownames(fiaMatrix)]==names(scores)[iScores])>0){
+      fiaMatrixTMP<-fiaMatrix[sampleVector[rownames(fiaMatrix)]==names(scores)[iScores],]
+      fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
+      if(0 %in% fiaAllTMPTest){
+        fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0]
+      }
+      fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
+      scores[[iScores]]<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(
+         fiaAllTMP,nrow(fiaMatrixTMP)),
+         nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
+    }
+  }
+  return(list(
+    scores=scores,
+    scoresSummary=fiaAll,
+    fiaListPerSample=fiaListPerSample,
+    fiaMatrix=fiaMatrix))
+}
+
 
 #' A function replacing negative values.
 #'
@@ -133,7 +526,7 @@ atnv<-function(NMRdata=NULL,noiseLevels=NULL){
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage(paste("mrbin ","1.6.1",#as.character(utils::packageVersion("mrbin")),
+    packageStartupMessage(paste("mrbin ","1.6.2",#as.character(utils::packageVersion("mrbin")),
       "\n","Please check regularly for updates at https://CRAN.R-project.org/package=mrbin",sep=""))
 }
 
@@ -3069,7 +3462,7 @@ readNMR2<-function(onlyTitles=FALSE){#Read NMR spectral data
 
 #' A function for adding NMR spectra to the plot list.
 #'
-#' This function adds a sepctrum to the plot list.
+#' This function adds a spectrum to the plot list.
 #' @param folder Defines the exact NMR data folder. If NULL, mrbin parameter set is used
 #' @param dimension Defines the data dimension, "1D" or "2D". Only used if not NULL
 #' @param NMRvendor Defines the NMR manufacturer, default is "Bruker"
@@ -3148,7 +3541,7 @@ addToPlot<-function(folder=NULL,
 
 #' A function for removing NMR spectra from the plot list.
 #'
-#' This function removes a sepctrum from the plot list.
+#' This function removes a spectrum from the plot list.
 #' @param folder Defines the exact NMR data folder.
 #' @param dimension Defines the data dimension, "1D" or "2D".
 #' @return {none}
@@ -4573,7 +4966,8 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
     #mrbin.env$mrbinTMP$binTMP<-NULL
     binData<-binSingleNMR(currentSpectrum=NMRdata,dimension=dimension,
               binRegions=binRegions,binMethod=binMethod,
-              useMeanIntensityForBins=useMeanIntensityForBins)
+              useMeanIntensityForBins=useMeanIntensityForBins,
+              spectrumTitle=NMRdataList$currentSpectrumName)
     noiseData<-calculateNoise(NMRdata=NMRdataOriginal,
                pointsPerBin=binData$pointsPerBin,dimension=dimension,
                noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d,
@@ -4924,7 +5318,7 @@ removeAreas2<-function(NMRdata=NULL,dimension="1D",removeAreaList=NULL){
 
 binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
   binRegions=NULL,binMethod="Rectangular bins",
-  useMeanIntensityForBins=TRUE){
+  useMeanIntensityForBins=TRUE,spectrumTitle=NULL){
   #dataProvided<-TRUE
   #if(is.null(currentSpectrum)){
   #  currentSpectrum<-mrbin.env$mrbinTMP$currentSpectrum
@@ -4952,10 +5346,11 @@ binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
          if(!useMeanIntensityForBins){
            adjustTMP<-abs(binRegions[ibinTMP,4]-binRegions[ibinTMP,3])*
                              abs(binRegions[ibinTMP,2]-binRegions[ibinTMP,1])
-           message(paste("Bin sizes",dim(adjustTMP),"\n"))
+           #message(paste("Bin sizes",dim(adjustTMP),"\n"))
          }
-        message(paste("Number of points",dim(numberOfPointsPerBinTMP),"\n"))
-        message(paste("Sums",dim(sum(currentSpectrum[rowsTMP,colsTMP],na.rm=TRUE)),"\n"))
+        message(paste("Something seems to be wrong for sample",spectrumTitle))
+        #message(paste("Number of points",dim(numberOfPointsPerBinTMP),"\n"))
+        #message(paste("Sums",dim(sum(currentSpectrum[rowsTMP,colsTMP],na.rm=TRUE)),"\n"))
         binTMP[ibinTMP]<-(sum(currentSpectrum[rowsTMP,colsTMP],na.rm=TRUE)/
                          numberOfPointsPerBinTMP)*adjustTMP
         #Set to NA: Make sure each point is counted only once for rectangular bins. For custom bins lists, double counting may be on purpose

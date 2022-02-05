@@ -27,7 +27,7 @@ addToPlot(
 {none}
 }
 \description{
-This function adds a sepctrum to the plot list.
+This function adds a spectrum to the plot list.
 }
 \examples{
 \donttest{ addToPlot() }
