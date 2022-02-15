@@ -113,14 +113,14 @@ predictWrapper<-function(model,dataSet,functionNamePredict="predict",firstLevel=
 #'  fiaResults<-fia(model=mod,dataSet=dataset,factors=group,parameterNameData="newdata",
 #'    firstLevel=0,type="response")
 #'  fiaResults$scores
-fia<-function(model,dataSet,factors,nSeed=3,numberOfSamples=100,
-  maxFeatures=10000,innerLoop=100,verbose=TRUE,maxNumberAllTests=10,firstLevel=1,
+fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
+  maxFeatures=10000,innerLoop=100,verbose=TRUE,maxNumberAllTests=5,firstLevel=1,
   saveMemory=FALSE,functionNamePredict="predict",parameterNameObject="object",
   parameterNameData="x",...){
   digitDict<-c(1:9,0,letters,LETTERS)#replace number>9 with single digit characters
   seedList=(1:nSeed-1)*100
   if(is.factor(factors)){
-    factors<-droplevels(factors)
+    #factors<-droplevels(factors)#this could change the order compared to the ANN
   } else {
     factors<-factor(factors)
   }
@@ -243,91 +243,93 @@ fia<-function(model,dataSet,factors,nSeed=3,numberOfSamples=100,
       for(iInnerLoop in 1:innerLoop){
         seedInnerLoop<-(iInnerLoop-1)*1000
         i2<-1
-        for(i2 in 1:length(fiaResults)){
-         if(length(fiaResults[[i2]])>0){
-           i3TMP<-names(fiaResults[[i2]])#to avoid skipping after deleting entries
-           if(!saveMemory){
-             if(i2==1|length(fiaResults[[i2]][[1]])>=maxFeatures){
-               pred2=rep("",2*length(fiaResults[[i2]]))
-             } else {
-               dataTMP<-dataSet[rep(repSample,2*length(fiaResults[[i2]])),,drop=FALSE]
-               for(iPredTMP in 1:length(fiaResults[[i2]])){
-                 dataTMP[iPredTMP,fiaResults[[i2]][[iPredTMP]]]<-
-                   lVector[fiaResults[[i2]][[iPredTMP]]] #replace value by low value
-                 dataTMP[length(fiaResults[[i2]])+iPredTMP,fiaResults[[i2]][[iPredTMP]]]<-
-                   hVector[fiaResults[[i2]][[iPredTMP]]] #replace value by high value
-               }
-               predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
-                 functionNamePredict=functionNamePredict,
-                 parameterNameObject=parameterNameObject,
-                 parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,...)
-               pred2<-names(factorsDict)[predTMP]
-             }
-           }
-           i3b<-1
-           for(i3b in 1:length(i3TMP)){
-            i3<-i3TMP[i3b]
-            if(saveMemory){
-              if(i2==1|length(fiaResults[[i2]][[i3]])>=maxFeatures){
-                pred<-"" #first step(s) assumed to be positive
-              } else {
-                 dataTMP<-dataSet[c(repSample,repSample),,drop=FALSE]
-                 dataTMP[1,fiaResults[[i2]][[i3]]]<-lVector[fiaResults[[i2]][[i3]]] #replace value i by low value
-                 dataTMP[2,fiaResults[[i2]][[i3]]]<-hVector[fiaResults[[i2]][[i3]]] #replace value i by high value
+        if(length(fiaResults)>0){
+          for(i2 in 1:length(fiaResults)){
+           if(length(fiaResults[[i2]])>0){
+             i3TMP<-names(fiaResults[[i2]])#to avoid skipping after deleting entries
+             if(!saveMemory){
+               if(i2==1|length(fiaResults[[i2]][[1]])>=maxFeatures){
+                 pred2=rep("",2*length(fiaResults[[i2]]))
+               } else {
+                 dataTMP<-dataSet[rep(repSample,2*length(fiaResults[[i2]])),,drop=FALSE]
+                 for(iPredTMP in 1:length(fiaResults[[i2]])){
+                   dataTMP[iPredTMP,fiaResults[[i2]][[iPredTMP]]]<-
+                     lVector[fiaResults[[i2]][[iPredTMP]]] #replace value by low value
+                   dataTMP[length(fiaResults[[i2]])+iPredTMP,fiaResults[[i2]][[iPredTMP]]]<-
+                     hVector[fiaResults[[i2]][[iPredTMP]]] #replace value by high value
+                 }
                  predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
                    functionNamePredict=functionNamePredict,
                    parameterNameObject=parameterNameObject,
                    parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,...)
-                 pred<-names(factorsDict)[predTMP]
+                 pred2<-names(factorsDict)[predTMP]
+               }
+             }
+             i3b<-1
+             for(i3b in 1:length(i3TMP)){
+              i3<-i3TMP[i3b]
+              if(saveMemory){
+                if(i2==1|length(fiaResults[[i2]][[i3]])>=maxFeatures){
+                  pred<-"" #first step(s) assumed to be positive
+                } else {
+                   dataTMP<-dataSet[c(repSample,repSample),,drop=FALSE]
+                   dataTMP[1,fiaResults[[i2]][[i3]]]<-lVector[fiaResults[[i2]][[i3]]] #replace value i by low value
+                   dataTMP[2,fiaResults[[i2]][[i3]]]<-hVector[fiaResults[[i2]][[i3]]] #replace value i by high value
+                   predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
+                     functionNamePredict=functionNamePredict,
+                     parameterNameObject=parameterNameObject,
+                     parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,...)
+                   pred<-names(factorsDict)[predTMP]
+                }
+              } else {
+                pred<-pred2[c(i3b,length(i3TMP)+i3b)]
               }
-            } else {
-              pred<-pred2[c(i3b,length(i3TMP)+i3b)]
-            }
-            parentNameTMP<-substr(i3,1,nchar(i3)-2)
-            if(sum(!pred==sampleVector[as.character(repSample)])==0){#correct prediction
-               #if all children were checked and the parent is still there,
-               #this means the parent is positive while all children are negative.
-               #in this case the parent will be saved to the list and then deleted
-               if(which(digitDict==substr(i3,nchar(i3)-1,nchar(i3)-1))==
-                 (length(fiaResults[[i2]][[i3]])+1)){#this indicates that all children have been tested
-                 if(i2>1){#save parent to list
-                   if(!is.null(fiaResults[[i2-1]][[parentNameTMP]])){
-                     if(!list(fiaResults[[i2-1]][[parentNameTMP]])%in%
-                       samplesTestedMultiple[[as.character(repSample)]]){
-                         samplesTestedMultiple[[as.character(repSample)]]<-c(
-                           samplesTestedMultiple[[as.character(repSample)]],
-                           list(fiaResults[[i2-1]][[parentNameTMP]]))
+              parentNameTMP<-substr(i3,1,nchar(i3)-2)
+              if(sum(!pred==sampleVector[as.character(repSample)])==0){#correct prediction
+                 #if all children were checked and the parent is still there,
+                 #this means the parent is positive while all children are negative.
+                 #in this case the parent will be saved to the list and then deleted
+                 if(which(digitDict==substr(i3,nchar(i3)-1,nchar(i3)-1))==
+                   (length(fiaResults[[i2]][[i3]])+1)){#this indicates that all children have been tested
+                   if(i2>1){#save parent to list
+                     if(!is.null(fiaResults[[i2-1]][[parentNameTMP]])){
+                       if(!list(fiaResults[[i2-1]][[parentNameTMP]])%in%
+                         samplesTestedMultiple[[as.character(repSample)]]){
+                           samplesTestedMultiple[[as.character(repSample)]]<-c(
+                             samplesTestedMultiple[[as.character(repSample)]],
+                             list(fiaResults[[i2-1]][[parentNameTMP]]))
+                       }
+                       fiaResults[[i2-1]][[parentNameTMP]]<-NULL
                      }
-                     fiaResults[[i2-1]][[parentNameTMP]]<-NULL
                    }
                  }
-               }
-               fiaResults[[i2]][[i3]]<-NULL
-            } else {#incorrect prediction, i.e. positive result
-              if(i2>1){#delete parent
-                fiaResults[[i2-1]][[parentNameTMP]]<-NULL
+                 fiaResults[[i2]][[i3]]<-NULL
+              } else {#incorrect prediction, i.e. positive result
+                if(i2>1){#delete parent
+                  fiaResults[[i2-1]][[parentNameTMP]]<-NULL
+                }
+                #split into two children by selecting half of features
+                if(length(fiaResults[[i2]][[i3]])>maxNumberAllTests){
+                   set.seed(i2+iSeed+seedInnerLoop)
+                   fiaResults[[i2+1]][[paste(i3,"1-",sep="",collapse="")]]<-
+                     sort(sample(fiaResults[[i2]][[i3]],ceiling(length(
+                     fiaResults[[i2]][[i3]])/2)),decreasing=TRUE)
+                   fiaResults[[i2+1]][[paste(i3,"2-",sep="",collapse="")]]<-
+                     (setdiff(fiaResults[[i2]][[i3]],fiaResults[[i2+1]][[
+                     paste(i3,"1-",sep="",collapse="")]]))
+                } else {#split low numbers manually by leaving one out each
+                   iLowNumbers<-length(fiaResults[[i2]][[i3]])
+                   for(iLowNumbers2 in 1:iLowNumbers){
+                      fiaResults[[i2+1]][[paste(i3,digitDict[iLowNumbers2]
+                        ,"-",sep="",collapse="")]]<-
+                        fiaResults[[i2]][[i3]][setdiff(
+                        1:iLowNumbers,iLowNumbers2)]
+                   }
+                }
               }
-              #split into two children by selecting half of features
-              if(length(fiaResults[[i2]][[i3]])>maxNumberAllTests){
-                 set.seed(i2+iSeed+seedInnerLoop)
-                 fiaResults[[i2+1]][[paste(i3,"1-",sep="",collapse="")]]<-
-                   sort(sample(fiaResults[[i2]][[i3]],ceiling(length(
-                   fiaResults[[i2]][[i3]])/2)),decreasing=TRUE)
-                 fiaResults[[i2+1]][[paste(i3,"2-",sep="",collapse="")]]<-
-                   (setdiff(fiaResults[[i2]][[i3]],fiaResults[[i2+1]][[
-                   paste(i3,"1-",sep="",collapse="")]]))
-              } else {#split low numbers manually by leaving one out each
-                 iLowNumbers<-length(fiaResults[[i2]][[i3]])
-                 for(iLowNumbers2 in 1:iLowNumbers){
-                    fiaResults[[i2+1]][[paste(i3,digitDict[iLowNumbers2]
-                      ,"-",sep="",collapse="")]]<-
-                      fiaResults[[i2]][[i3]][setdiff(
-                      1:iLowNumbers,iLowNumbers2)]
-                 }
-              }
-            }
+             }
            }
-         }
+          }
         }
      }
      samplesTestedAdditional[[as.character(repSample)]]<-unique(c(
@@ -353,15 +355,20 @@ fia<-function(model,dataSet,factors,nSeed=3,numberOfSamples=100,
         }
        }
      }
-     steps2<-steps2+1
      if(steps2/(length(seedList)*length(sampleVector))>=steps*stepSizePercent/100){
        if(verbose){
          message(steps*stepSizePercent,"% ",appendLF = FALSE)
          flush.console()
-         if(steps2==(length(seedList)*length(sampleVector))) message("\n",appendLF=FALSE)
+         if(steps2>=(length(seedList)*length(sampleVector))){
+           if(steps*stepSizePercent<100) message("100% ",appendLF = FALSE)
+           message("\n",appendLF=FALSE)
+           flush.console()
+         } #else {
+         #}
        }
        steps<-steps+1
      }
+     steps2<-steps2+1
    }
   }
   #calculate fia scores
@@ -386,10 +393,10 @@ fia<-function(model,dataSet,factors,nSeed=3,numberOfSamples=100,
     }
   }
   #fia scores for the whole data set
-  fiaAllTMP<-apply(fiaMatrix,2,min,na.rm=TRUE)
+  #fiaAllTMP<-apply(fiaMatrix,2,min,na.rm=TRUE)
   fiaMatrixTMP<-fiaMatrix
   fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
-  if(0 %in% fiaAllTMPTest) fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0]
+  if(0 %in% fiaAllTMPTest) fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
   fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
   fiaAll<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(fiaAllTMP,nrow(fiaMatrixTMP)),
      nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
@@ -398,10 +405,11 @@ fia<-function(model,dataSet,factors,nSeed=3,numberOfSamples=100,
   names(scores)<-levels(factors)
   for(iScores in 1:length(scores)){
     if(sum(sampleVector[rownames(fiaMatrix)]==names(scores)[iScores])>0){
-      fiaMatrixTMP<-fiaMatrix[sampleVector[rownames(fiaMatrix)]==names(scores)[iScores],]
+      fiaMatrixTMP<-fiaMatrix[sampleVector[rownames(fiaMatrix)]==names(scores)[
+        iScores],,drop=FALSE]
       fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
       if(0 %in% fiaAllTMPTest){
-        fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0]
+        fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
       }
       fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
       scores[[iScores]]<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(
@@ -526,7 +534,7 @@ atnv<-function(NMRdata=NULL,noiseLevels=NULL){
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage(paste("mrbin ","1.6.2",#as.character(utils::packageVersion("mrbin")),
+    packageStartupMessage(paste("mrbin ","1.6.3",#as.character(utils::packageVersion("mrbin")),
       "\n","Please check regularly for updates at https://CRAN.R-project.org/package=mrbin",sep=""))
 }
 
@@ -870,7 +878,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL){
                       }
                     }
                   } else {
-                    readNMR2(onlyTitles=TRUE)
+                    readNMR2()#onlyTitles=TRUE)
                   }
               }
               if(!stopTMP){

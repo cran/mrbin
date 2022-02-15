@@ -18,7 +18,7 @@
 
 \title{mrbin - Magnetic Resonance Binning, Integration and Normalization}
 \author{Matthias S. Klein}
-\date{Version 1.6.0}
+\date{Version 1.6.3}
 \maketitle
 %\tableofcontents
 %\pagebreak
@@ -26,7 +26,9 @@
 \section{Introduction}
 
 Nuclear Magnetic Resonance (NMR) is widely used for metabolomics research. This
-package uses spectral binning to convert 1D or 2D NMR data into a matrix of values
+package is a collection of functions for processing and analyzing such data.
+The namesake function uses spectral binning to convert 1D or 2D NMR data into a
+matrix of values
 suitable for further data analysis and performs basic processing steps in a
 reproducible way. Negative values, a common issue in NMR data, are replaced by
 positive values. All used parameters are stored in a readable text file and can
@@ -339,7 +341,7 @@ mrplot()
 \end{verbatim}
 
 In mrplot, multiple spectra shown overlaid. If both 1D and 2D spectra are added,
-both are shown in region-matched plots, e.g. for metbolite identification
+both are shown in region-matched plots, e.g. for metabolite identification
 purposes.\\
 
 To use the more basic commands, you need to first load one NMR spectrum:

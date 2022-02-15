@@ -1,6 +1,6 @@
 Package: mrbin
 Title: Magnetic Resonance Binning, Integration and Normalization
-Version: 1.6.2
+Version: 1.6.3
 Authors@R: 
     person(given = "Matthias",
            family = "Klein",
@@ -8,7 +8,7 @@ Authors@R:
            email = "klein.663@osu.edu",
            comment = c(ORCID = "0000-0001-7455-5381"))
 Description: Nuclear Magnetic Resonance is widely used for metabolite analysis.  
-    This package is a collection for processing and analyzing metabolite data. 
+    This package is a collection of functions for processing and analyzing metabolite data. 
     (<doi:10.1021/acs.jproteome.0c00684>). The namesake function converts 1D 
     or 2D data into a matrix of values suitable for further data analysis and
     performs basic processing steps in a reproducible way. Negative values, a
@@ -25,8 +25,8 @@ VignetteBuilder: utils
 URL: http://www.kleinomicslab.com/software/,
         https://github.com/kleinomicslab/mrbin
 NeedsCompilation: no
-Packaged: 2022-02-05 00:22:17 UTC; klein.663
+Packaged: 2022-02-15 03:16:27 UTC; klein.663
 Author: Matthias Klein [aut, cre] (<https://orcid.org/0000-0001-7455-5381>)
 Maintainer: Matthias Klein <klein.663@osu.edu>
 Repository: CRAN
-Date/Publication: 2022-02-05 10:20:06 UTC
+Date/Publication: 2022-02-15 09:30:02 UTC

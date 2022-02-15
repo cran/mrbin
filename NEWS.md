@@ -1,5 +1,11 @@
 # mrbin News
 
+## Version 1.6.3
+
+* Small bug fixes in the fia function
+* Small bug fixes in the mrplot function
+
+
 ## Version 1.6.2
 
 * New function fia for analyzing predictive metabolomics models
