@@ -223,6 +223,7 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   steps<-1
   steps2<-1
   iSeed2<-1#for debugging
+
   for(iSeed2 in 1:length(seedList)){ #repeat for different starting seeds
     iSeed<-seedList[iSeed2]
     fiaListL<-list()
@@ -371,6 +372,7 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
      steps2<-steps2+1
    }
   }
+
   #calculate fia scores
   fiaMatrix<-matrix(NA,nrow=length(fiaListPerSample),ncol=ncol(dataSet))
   colnames(fiaMatrix)<-colnames(dataSet)
@@ -392,6 +394,8 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
        }
     }
   }
+  #Assign high score to features of no impact
+  fiaMatrix[is.na(fiaMatrix)]<-ncol(dataSet)
   #fia scores for the whole data set
   #fiaAllTMP<-apply(fiaMatrix,2,min,na.rm=TRUE)
   fiaMatrixTMP<-fiaMatrix
@@ -534,7 +538,7 @@ atnv<-function(NMRdata=NULL,noiseLevels=NULL){
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage(paste("mrbin ","1.6.3",#as.character(utils::packageVersion("mrbin")),
+    packageStartupMessage(paste("mrbin ","1.6.4",#as.character(utils::packageVersion("mrbin")),
       "\n","Please check regularly for updates at https://CRAN.R-project.org/package=mrbin",sep=""))
 }
 

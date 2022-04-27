@@ -1,5 +1,10 @@
 # mrbin News
 
+## Version 1.6.4
+
+* Minor changes in calculations in the fia function. Features of lowest impact now are assigned a (large) FIA score instead of an NA value
+
+
 ## Version 1.6.3
 
 * Small bug fixes in the fia function

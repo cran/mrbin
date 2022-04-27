@@ -18,7 +18,7 @@
 
 \title{mrbin - Magnetic Resonance Binning, Integration and Normalization}
 \author{Matthias S. Klein}
-\date{Version 1.6.3}
+\date{Version 1.6.4}
 \maketitle
 %\tableofcontents
 %\pagebreak
