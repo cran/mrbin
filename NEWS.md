@@ -1,5 +1,12 @@
 # mrbin News
 
+## Version 1.6.5
+
+* New output of fia function: scoresIndividual shows fia score for each tested sample
+* Speed improvements in the fia function
+
+
+
 ## Version 1.6.4
 
 * Minor changes in calculations in the fia function. Features of lowest impact now are assigned a (large) FIA score instead of an NA value

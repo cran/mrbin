@@ -93,7 +93,7 @@ predictWrapper<-function(model,dataSet,functionNamePredict="predict",firstLevel=
 #' @param parameterNameObject The name of the parameter for passing the model to the prediction function
 #' @param parameterNameData The name of the parameter for passing the data to the prediction function
 #' @param ... Optional, additional parameters that will be passed to the prediction function.
-#' @return A list of results: scores contains vectors of fia scores for each predicted group; scoresSummary A vector of fia scores for all predicted sample; fiaListPerSample A list of important combinations of features for each predicted sample; fiaMatrix A list of fia scores for each predicted group.
+#' @return A list of results: scoresSummary A vector of fia scores for the whole dataset; scores contains vectors of fia scores for each predicted group; scoresIndividual A list of fia scores for each individual sample; fiaListPerSample A list of important combinations of features for each predicted sample; fiaMatrix A list of fia scores for each predicted group.
 #' @export
 #' @examples
 #'  #First, define group membership and create the example feature data
@@ -104,15 +104,16 @@ predictWrapper<-function(model,dataSet,functionNamePredict="predict",firstLevel=
 #'    Feature2=c(2.6,4.0,3.2,1.2,3.1,2.1,4.5,6.1,1.3),
 #'    Feature3=c(3.1,6.1,5.8,5.1,3.8,6.1,3.4,4.0,4.4),
 #'    Feature4=c(5.3,5.2,3.1,2.7,3.2,2.8,5.9,5.8,3.1),
-#'    Feature5=c(3.2,4.4,4.8,4.9,6.0,3.6,6.1,3.9,3.5)
+#'    Feature5=c(3.2,4.4,4.8,4.9,6.0,3.6,6.1,3.9,3.5),
+#'    Feature6=c(6.8,6.7,7.2,7.0,7.3,7.1,7.2,6.9,6.8)
 #'    )
 #'  rownames(dataset)<-names(group)
 #'  #train a model - here we use a logit model instead of ANN as a demonstration
-#'  mod<-glm(group~Feature1+Feature2+Feature3+Feature4+Feature5,
+#'  mod<-glm(group~Feature1+Feature2+Feature3+Feature4+Feature5+Feature6,
 #'    data=data.frame(group=group,dataset),family="binomial")
-#'  fiaResults<-fia(model=mod,dataSet=dataset,factors=group,parameterNameData="newdata",
+#'  fiaresults<-fia(model=mod,dataSet=dataset,factors=group,parameterNameData="newdata",
 #'    firstLevel=0,type="response")
-#'  fiaResults$scores
+#'  fiaresults$scores
 fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   maxFeatures=10000,innerLoop=100,verbose=TRUE,maxNumberAllTests=5,firstLevel=1,
   saveMemory=FALSE,functionNamePredict="predict",parameterNameObject="object",
@@ -174,8 +175,8 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   steps<-1
   irepSample<-1
   for (irepSample in 1:length(sampleVector)){ #loop over all selected samples
-    repSample<-as.numeric(names(sampleVector))[irepSample]
-    dataTMP<-dataSet[rep(repSample,2*ncol(dataSet)),,drop=FALSE]
+    repSample<-names(sampleVector)[irepSample]
+    dataTMP<-dataSet[rep(as.numeric(repSample),2*ncol(dataSet)),,drop=FALSE]
     dataTMP[cbind(1:ncol(dataSet),1:ncol(dataSet))]<-
       lVector[1:ncol(dataSet)] #replace value by low value
     dataTMP[cbind(ncol(dataSet)+1:ncol(dataSet),1:ncol(dataSet))]<-
@@ -189,19 +190,19 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
     iSingle<-1
     for(iSingle in 1:ncol(dataSet)){
       if(sum(!pred[c(iSingle,iSingle+ncol(dataSet))]==
-        sampleVector[as.character(repSample)])>0){#if low levels were still correct, check high  levels
-          samplesPositive[[as.character(repSample)]]<-c(
-             samplesPositive[[as.character(repSample)]],colnames(dataSet)[iSingle])
+        sampleVector[repSample])>0){#if low levels were still correct, check high  levels
+          samplesPositive[[repSample]]<-c(
+             samplesPositive[[repSample]],colnames(dataSet)[iSingle])
           positiveFeatures<-unique(c(positiveFeatures,colnames(dataSet)[iSingle]))
       }
     }
-    if(length(samplesPositive[[as.character(repSample)]])>0){
-      for(ifiaList in 1:length(samplesPositive[[as.character(repSample)]])){
-        if(!samplesPositive[[as.character(repSample)]][ifiaList] %in%
-          fiaListPerSample[[as.character(repSample)]]){
-          fiaListPerSample[[as.character(repSample)]]<-c(
-            fiaListPerSample[[as.character(repSample)]],
-            samplesPositive[[as.character(repSample)]][ifiaList])
+    if(length(samplesPositive[[repSample]])>0){
+      for(ifiaList in 1:length(samplesPositive[[repSample]])){
+        if(!samplesPositive[[repSample]][ifiaList] %in%
+          fiaListPerSample[[repSample]]){
+          fiaListPerSample[[repSample]]<-c(
+            fiaListPerSample[[repSample]],
+            samplesPositive[[repSample]][ifiaList])
         }
       }
     }
@@ -229,7 +230,7 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
     fiaListL<-list()
     irepSample<-1#debug
     for (irepSample in 1:length(sampleVector)){ #loop over all selected samples
-      repSample<-as.numeric(names(sampleVector))[irepSample]
+      repSample<-names(sampleVector)[irepSample]
       i2<-1
       i3<-"1."#. means do not test
       fiaResults <- vector("list", ceiling(log2(ncol(dataSet)))+10)
@@ -238,12 +239,12 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
       }
       #remove positive single hits
       positiveSingleTMP<-setdiff(colnames(dataSet),
-          samplesTestedSingle[[as.character(repSample)]])
+          samplesTestedSingle[[repSample]])
       if(length(positiveSingleTMP)>0) fiaResults[[i2]][[i3]]<-positiveSingleTMP
-      iInnerLoop<-1
+      #iInnerLoop<-1
       for(iInnerLoop in 1:innerLoop){
         seedInnerLoop<-(iInnerLoop-1)*1000
-        i2<-1
+        #i2<-1
         if(length(fiaResults)>0){
           for(i2 in 1:length(fiaResults)){
            if(length(fiaResults[[i2]])>0){
@@ -252,7 +253,7 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
                if(i2==1|length(fiaResults[[i2]][[1]])>=maxFeatures){
                  pred2=rep("",2*length(fiaResults[[i2]]))
                } else {
-                 dataTMP<-dataSet[rep(repSample,2*length(fiaResults[[i2]])),,drop=FALSE]
+                 dataTMP<-dataSet[rep(as.numeric(repSample),2*length(fiaResults[[i2]])),,drop=FALSE]
                  for(iPredTMP in 1:length(fiaResults[[i2]])){
                    dataTMP[iPredTMP,fiaResults[[i2]][[iPredTMP]]]<-
                      lVector[fiaResults[[i2]][[iPredTMP]]] #replace value by low value
@@ -266,14 +267,14 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
                  pred2<-names(factorsDict)[predTMP]
                }
              }
-             i3b<-1
+             #i3b<-1
              for(i3b in 1:length(i3TMP)){
               i3<-i3TMP[i3b]
               if(saveMemory){
                 if(i2==1|length(fiaResults[[i2]][[i3]])>=maxFeatures){
                   pred<-"" #first step(s) assumed to be positive
                 } else {
-                   dataTMP<-dataSet[c(repSample,repSample),,drop=FALSE]
+                   dataTMP<-dataSet[c(as.numeric(repSample),as.numeric(repSample)),,drop=FALSE]
                    dataTMP[1,fiaResults[[i2]][[i3]]]<-lVector[fiaResults[[i2]][[i3]]] #replace value i by low value
                    dataTMP[2,fiaResults[[i2]][[i3]]]<-hVector[fiaResults[[i2]][[i3]]] #replace value i by high value
                    predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
@@ -286,7 +287,7 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
                 pred<-pred2[c(i3b,length(i3TMP)+i3b)]
               }
               parentNameTMP<-substr(i3,1,nchar(i3)-2)
-              if(sum(!pred==sampleVector[as.character(repSample)])==0){#correct prediction
+              if(sum(!pred==sampleVector[repSample])==0){#correct prediction
                  #if all children were checked and the parent is still there,
                  #this means the parent is positive while all children are negative.
                  #in this case the parent will be saved to the list and then deleted
@@ -295,9 +296,9 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
                    if(i2>1){#save parent to list
                      if(!is.null(fiaResults[[i2-1]][[parentNameTMP]])){
                        if(!list(fiaResults[[i2-1]][[parentNameTMP]])%in%
-                         samplesTestedMultiple[[as.character(repSample)]]){
-                           samplesTestedMultiple[[as.character(repSample)]]<-c(
-                             samplesTestedMultiple[[as.character(repSample)]],
+                         samplesTestedMultiple[[repSample]]){
+                           samplesTestedMultiple[[repSample]]<-c(
+                             samplesTestedMultiple[[repSample]],
                              list(fiaResults[[i2-1]][[parentNameTMP]]))
                        }
                        fiaResults[[i2-1]][[parentNameTMP]]<-NULL
@@ -333,26 +334,26 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
           }
         }
      }
-     samplesTestedAdditional[[as.character(repSample)]]<-unique(c(
-       samplesTestedAdditional[[as.character(repSample)]],unlist(
+     samplesTestedAdditional[[repSample]]<-unique(c(
+       samplesTestedAdditional[[repSample]],unlist(
        fiaResults[which(lapply(fiaResults,length)>0)],recursive =FALSE)))
-     if(length(samplesTestedMultiple[[as.character(repSample)]])>0){
-       for(ifiaList in 1:length(samplesTestedMultiple[[as.character(repSample)]])){
-        if(!samplesTestedMultiple[[as.character(repSample)]][ifiaList] %in%
-          fiaListPerSample[[as.character(repSample)]]){
-           fiaListPerSample[[as.character(repSample)]]<-c(
-              fiaListPerSample[[as.character(repSample)]],
-              samplesTestedMultiple[[as.character(repSample)]])
+     if(length(samplesTestedMultiple[[repSample]])>0){
+       for(ifiaList in 1:length(samplesTestedMultiple[[repSample]])){
+        if(!samplesTestedMultiple[[repSample]][ifiaList] %in%
+          fiaListPerSample[[repSample]]){
+           fiaListPerSample[[repSample]]<-c(
+              fiaListPerSample[[repSample]],
+              samplesTestedMultiple[[repSample]])
         }
        }
      }
-     if(length(samplesTestedAdditional[[as.character(repSample)]])>0){
-       for(ifiaList in 1:length(samplesTestedAdditional[[as.character(repSample)]])){
-        if(!samplesTestedAdditional[[as.character(repSample)]][ifiaList] %in%
-          fiaListPerSample[[as.character(repSample)]]){
-           fiaListPerSample[[as.character(repSample)]]<-c(
-              fiaListPerSample[[as.character(repSample)]],
-              samplesTestedAdditional[[as.character(repSample)]])
+     if(length(samplesTestedAdditional[[repSample]])>0){
+       for(ifiaList in 1:length(samplesTestedAdditional[[repSample]])){
+        if(!samplesTestedAdditional[[repSample]][ifiaList] %in%
+          fiaListPerSample[[repSample]]){
+           fiaListPerSample[[repSample]]<-c(
+              fiaListPerSample[[repSample]],
+              samplesTestedAdditional[[repSample]])
         }
        }
      }
@@ -399,8 +400,8 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   #fia scores for the whole data set
   #fiaAllTMP<-apply(fiaMatrix,2,min,na.rm=TRUE)
   fiaMatrixTMP<-fiaMatrix
-  fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
-  if(0 %in% fiaAllTMPTest) fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
+  #fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
+  #if(0 %in% fiaAllTMPTest) fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
   fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
   fiaAll<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(fiaAllTMP,nrow(fiaMatrixTMP)),
      nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
@@ -411,19 +412,36 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
     if(sum(sampleVector[rownames(fiaMatrix)]==names(scores)[iScores])>0){
       fiaMatrixTMP<-fiaMatrix[sampleVector[rownames(fiaMatrix)]==names(scores)[
         iScores],,drop=FALSE]
-      fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
-      if(0 %in% fiaAllTMPTest){
-        fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
-      }
+      #fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
+      #if(0 %in% fiaAllTMPTest){
+      #  fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
+      #}
       fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
       scores[[iScores]]<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(
          fiaAllTMP,nrow(fiaMatrixTMP)),
          nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
     }
   }
+  #fia scores per sample
+  scoresIndividual<-vector("list",nrow(fiaMatrix))
+  names(scoresIndividual)<-rownames(fiaMatrix)
+  for(iScores in 1:length(scoresIndividual)){
+    #if(sum(sampleVector[rownames(fiaMatrix)]==names(scoresIndividual)[iScores])>0){
+      fiaMatrixTMP<-fiaMatrix[iScores,,drop=FALSE]
+      #fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
+      #if(0 %in% fiaAllTMPTest){
+      #  fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
+      #}
+      fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
+      scoresIndividual[[iScores]]<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(
+         fiaAllTMP,nrow(fiaMatrixTMP)),
+         nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
+    #}
+  }
   return(list(
     scores=scores,
     scoresSummary=fiaAll,
+    scoresIndividual=scoresIndividual,
     fiaListPerSample=fiaListPerSample,
     fiaMatrix=fiaMatrix))
 }
@@ -538,7 +556,7 @@ atnv<-function(NMRdata=NULL,noiseLevels=NULL){
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage(paste("mrbin ","1.6.4",#as.character(utils::packageVersion("mrbin")),
+    packageStartupMessage(paste("mrbin ","1.6.5",#as.character(utils::packageVersion("mrbin")),
       "\n","Please check regularly for updates at https://CRAN.R-project.org/package=mrbin",sep=""))
 }
 

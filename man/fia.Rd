@@ -54,7 +54,7 @@ fia(
 \item{...}{Optional, additional parameters that will be passed to the prediction function.}
 }
 \value{
-A list of results: scores contains vectors of fia scores for each predicted group; scoresSummary A vector of fia scores for all predicted sample; fiaListPerSample A list of important combinations of features for each predicted sample; fiaMatrix A list of fia scores for each predicted group.
+A list of results: scoresSummary A vector of fia scores for the whole dataset; scores contains vectors of fia scores for each predicted group; scoresIndividual A list of fia scores for each individual sample; fiaListPerSample A list of important combinations of features for each predicted sample; fiaMatrix A list of fia scores for each predicted group.
 }
 \description{
 This function finds features that can change the outcomes of a model's prediction.
@@ -73,13 +73,14 @@ the parameter functionNamePredict.
    Feature2=c(2.6,4.0,3.2,1.2,3.1,2.1,4.5,6.1,1.3),
    Feature3=c(3.1,6.1,5.8,5.1,3.8,6.1,3.4,4.0,4.4),
    Feature4=c(5.3,5.2,3.1,2.7,3.2,2.8,5.9,5.8,3.1),
-   Feature5=c(3.2,4.4,4.8,4.9,6.0,3.6,6.1,3.9,3.5)
+   Feature5=c(3.2,4.4,4.8,4.9,6.0,3.6,6.1,3.9,3.5),
+   Feature6=c(6.8,6.7,7.2,7.0,7.3,7.1,7.2,6.9,6.8)
    )
  rownames(dataset)<-names(group)
  #train a model - here we use a logit model instead of ANN as a demonstration
- mod<-glm(group~Feature1+Feature2+Feature3+Feature4+Feature5,
+ mod<-glm(group~Feature1+Feature2+Feature3+Feature4+Feature5+Feature6,
    data=data.frame(group=group,dataset),family="binomial")
- fiaResults<-fia(model=mod,dataSet=dataset,factors=group,parameterNameData="newdata",
+ fiaresults<-fia(model=mod,dataSet=dataset,factors=group,parameterNameData="newdata",
    firstLevel=0,type="response")
- fiaResults$scores
+ fiaresults$scores
 }
