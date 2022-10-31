@@ -10,12 +10,15 @@ plotMultiNMR(
   rectangleColors = c("green", "orange", "blue", "red", "yellow", "gray", "purple"),
   rectangleFront = FALSE,
   polygonRegion = NULL,
+  maxPlots = Inf,
   color = NULL,
   add = FALSE,
   showGrid = FALSE,
   manualScale = TRUE,
   plotTitle = "",
-  restrictToRange = FALSE
+  restrictToRange = FALSE,
+  enableSplit = TRUE,
+  dimension = NULL
 )
 }
 \arguments{
@@ -29,6 +32,8 @@ plotMultiNMR(
 
 \item{polygonRegion}{Defines 4 corners of a polygon to be plotted}
 
+\item{maxPlots}{The maximum number of 2D plots to be overlaid}
+
 \item{color}{Defines the color of the spectrum plot. If NULL, a rainbow theme is used for 2D NMR}
 
 \item{add}{If TRUE, additional spectrum plots are overlaid with the current plot}
@@ -40,6 +45,10 @@ plotMultiNMR(
 \item{plotTitle}{Defines the main title of the plot}
 
 \item{restrictToRange}{Restrict plot area to range of available data points. Defaults to FALSE}
+
+\item{enableSplit}{Allow split plots for showing 1D and 2D spectra simultaneously}
+
+\item{dimension}{If not provided, this will be taken from package environment}
 }
 \value{
 {None}
@@ -53,7 +62,7 @@ For 2D data use additionally: contMin(), contPlus(), up(), down()
 }
 \examples{
 mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-         PQNScaling="No",noiseRemoval="No",trimZeros="No",
+         PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 plotMultiNMR()

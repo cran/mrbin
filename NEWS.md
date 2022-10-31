@@ -1,5 +1,20 @@
 # mrbin News
 
+## Version 1.7.0
+
+* mrbin: results are now returned as an object of the new class "mrbin", containing bin data, metadata, and change logs. These objects should only be changed using functions from this package. Individual edits can be performed using editmrbin()
+* mrbin: Noise levels are now visually shown for a few spectra to help pick reasonable signal-to-noise levels
+* mrbin: Warnings during binning now cause a pop-up message to give users the chance to review and fix data issues such as phase, reference, and baseline errors
+* mrbin: PCA plots do no longer show group memberships during the data processing phase. To display color-coded groups, add metadata using mrbinResults<-metadatamrbin(mrbinResults) and then use plotPCA(mrbinResults)
+* mrbin: Changes to mrbin objects are now logged in $changeLog to ensure workflow reproducibility. Undocumented changes can be identified using checkmrbin(mrbinResults)
+* mrbin: New functionality to annotate mrbin data with molecule identities was added
+* mrbin: Improvements in memory usage to better handle large data sets. If more than 5000 bins are created, these will not be plotted in the output plot.
+* mrbin: The variable noise_level was moved to parameters list in mrbin environment
+* mrbin: Bug fix: Excluding the sugar area during PQN could not be turned off within mrbin, this is now fixed
+* mrbin: Users will no longer be asked whether to use parallel, previews and hints, these will be always used now unless turned off by manually setting the respective parameters
+* mrbin: Time estimates are now being displayed before and during binning
+
+
 ## Version 1.6.5
 
 * New output of fia function: scoresIndividual shows fia score for each tested sample

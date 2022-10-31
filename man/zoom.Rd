@@ -26,7 +26,7 @@ no arguments: zoom(). In this case the user will be asked for manual input.
 }
 \examples{
 mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-         PQNScaling="No",noiseRemoval="No",trimZeros="No",
+         PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 plotNMR()

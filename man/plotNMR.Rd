@@ -16,7 +16,9 @@ plotNMR(
   manualScale = TRUE,
   plotTitle = "",
   restrictToRange = FALSE,
-  currentSpectrumOriginal = NULL
+  currentSpectrumOriginal = NULL,
+  perspective = FALSE,
+  noise = NULL
 )
 }
 \arguments{
@@ -43,6 +45,10 @@ plotNMR(
 \item{restrictToRange}{Restrict plot area to range of available data points. Defaults to FALSE}
 
 \item{currentSpectrumOriginal}{Optional spectral data. If omitted, data from the environment variables is used}
+
+\item{perspective}{If TRUE, a perspective plot will be displayed for 2D data instead of the regular topographic view}
+
+\item{noise}{If provided, a line or plane at this level will be added to the plot to indicate noise level}
 }
 \value{
 {None}
@@ -56,7 +62,7 @@ For 2D data use additionally: contMin(), contPlus(), up(), down()
 }
 \examples{
 mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-         PQNScaling="No",noiseRemoval="No",trimZeros="No",
+         PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 plotNMR()
