@@ -22,18 +22,14 @@ This function annotates an mrbin object and returns it with updated $annotations
                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
-                              system.file("extdata/3/10/pdata/10",package="mrbin"))
-                   ))
- mrbinObject<-editmetabolitesmrbin(mrbinObject,borders=matrix(c(
-     1.346,1.324,21,23,
-     3.052,3.043,30.5,33.5,
-     4.066,4.059,57,59.5
-   ),ncol=4,byrow=TRUE),metabolitenames=c(
-   "Lactate",
-   "Creatinine",
-   "Creatinine"
-   ))
+                              system.file("extdata/3/10/pdata/10",package="mrbin"))),
+                   metadata=list(metaboliteIdentities=matrix(c(
+                   1.346,1.324,21,23,
+                   3.052,3.043,30.5,33.5,
+                   4.066,4.059,57,59.5
+                   ),ncol=4,byrow=TRUE,dimnames=list(
+                   c("Lactate","Creatinine","Creatinine"),NULL))))
 mrbinObject<-annotatemrbin(mrbinObject)
-mrbinObject$metadata$annotations
+mrbinObject$metadata$annotations[125:135]
 plotPCA(mrbinObject,loadings=TRUE)
 }

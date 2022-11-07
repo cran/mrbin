@@ -21,7 +21,7 @@
 
 \title{mrbin}
 \author{Matthias S. Klein}
-\date{Version 1.7.0}
+\date{Version 1.7.1}
 \maketitle
 \tableofcontents
 \pagebreak
@@ -182,7 +182,7 @@ mrbinResults<-mrbin(parameters=list(dimension="1D",
      ))
 @
 
-<<fig=TRUE, pdf=FALSE, png=TRUE,echo=FALSE>>=
+<<fig=TRUE,pdf=FALSE,png=TRUE,echo=FALSE>>=
 mrbinResults<-mrbin(silent=TRUE,#this suppresses all interactive prompts
      setDefault=FALSE,
      parameters=list(verbose=TRUE,
@@ -234,7 +234,10 @@ performed within mrbin(). However, it is also possible to run these (optional)
 steps later. For this, you should select "No" in mrbin() when asked about
 noise removal, PQN scaling, atnv, and log transform. Please note that scaling
 to the reference substance happens at the raw spectrum level and needs to be
-done during running mrbin(); it cannot be performed later. Here is a short
+done during running mrbin(); it cannot be performed later. Please consider that,
+apart from noise removal, most of the possible processing methods might not be
+appropriate for your specific dataset and/or data analysis plan. Therefore, you
+will need to make a decision based on your specific situation.  Here is a short
 overview of implemented commands, which should be performed in the order shown
 below:\\
 
@@ -263,6 +266,15 @@ Remove negative values by atnv scaling (see below for details):
 mrbinResults<-atnv(mrbinResults)
 @
 
+Correction for individual dilutions. Use if sample volumes or sample weights
+were not identical for all samples. The bin value of a sample will be multiplied
+by the respective dilution factor:
+
+<<eval=FALSE>>=
+mrbinResults<-setDilutionFactors(mrbinResults)
+mrbinResults<-dilutionCorrection(mrbinResults)
+@
+
 Probabilistic Quotient Normalization (PQN) scaling, this is similar, but better,
 than scaling to the total sum. Use for urine or tissue extracts:
 
@@ -270,10 +282,20 @@ than scaling to the total sum. Use for urine or tissue extracts:
 mrbinResults<-PQNScaling(mrbinResults)
 @
 
-Logarithm transform (will usually only work after atnv transform):
+Logarithm transform to make data more normal. Data will no longer be linearly
+correlated to molecular concentration but rather represent fold changes. This
+might only work after atnv transform due to negative values:
 
 <<eval=FALSE>>=
 mrbinResults<-logTrafo(mrbinResults)
+@
+
+Scaling to unit variance. This is rarely necessary, but might be advantageous,
+e.g. for use in artificial neural networks. Data will no longer be linearly
+correlated to molecular concentration:
+
+<<eval=FALSE>>=
+mrbinResults<-unitVarianceScaling(mrbinResults)
 @
 
 Plot results:
@@ -281,6 +303,16 @@ Plot results:
 <<eval=FALSE>>=
 plotResults(mrbinResults)
 @
+
+Removing a spectrum from the dataset. This should not be done after noise
+removal, PQN scaling, unit variance scaling, or atnv, as these methods employ
+data from all samples in the dataset. Only removing a sample before invoking
+any of these methods will guarantee correct data transformations.
+
+<<eval=FALSE>>=
+mrbinResults<-removeSpectrum(mrbinResults)
+@
+
 
 \subsection{Adding Metadata to mrbin Objects}
 You can add or edit metadata, including metabolite identities, for an mrbin
@@ -413,7 +445,7 @@ mrbinResults2D<-mrbin(silent=TRUE,#this suppresses all interactive prompts
 The used approximate signal-to-noise levels will be visually plotted and saved
 for up to three selected spectra:\\
 
-<<fig=TRUE,echo=TRUE,hide=FALSE, pdf=FALSE, png=TRUE>>=
+<<fig=TRUE,echo=FALSE,hide=FALSE, pdf=FALSE, png=TRUE>>=
 setNoiseLevels(mrbinResults2D,plotOnly=TRUE)
 @
 
@@ -546,11 +578,14 @@ The sequence of data processing is as follows:\\
   \item Reading NMR spectral data
   \item Optional: Scaling to reference region
   \item Binning
+  \item Optional: Removal of bins containing only zeros due to solvent removal (zero trimming)
   \item Quality control plot, including PCA
   \item Optional: Removal of bins containing mostly noise
-  \item Optional: Replacement of negative values (atnv transform)
+  \item Optional: Correction for dilution due to differing sample volume or weight
   \item Optional: PQN transform
+  \item Optional: Replacement of negative values (atnv transform)
   \item Optional: Log transform
+  \item Optional: Scaling to unit variance
   \item Quality control plot, including PCA
   \item Returning final bin data and parameters as an mrbin object
 \end{itemize}

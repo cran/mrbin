@@ -1,5 +1,16 @@
 # mrbin News
 
+## Version 1.7.1
+
+* Bug fix: annotatemrbin() sometimes added extra commas in metabolite annotations, this has been fixed
+* Bug fix: checkmrbin(), in rare cases, erroneously flagged unstated changes to an unchanged mrbin object. This was caused by numeric instabilities and has now been fixed
+* Bug fix: mrbin() did not properly add metadata to the result object, if added at the command line. This is now fixed
+* New functions setDilutionFactors() and dilutionCorrection() for individual dilution correction
+* Variable metaboliteIdentities in metadata was changed to matrix (was data.frame)
+* printParameters() now omits empty (NULL, "", nrow==0) variables, but prints non-empty metadata now
+* New function unitVarianceScaling()
+
+
 ## Version 1.7.0
 
 * mrbin: results are now returned as an object of the new class "mrbin", containing bin data, metadata, and change logs. These objects should only be changed using functions from this package. Individual edits can be performed using editmrbin()

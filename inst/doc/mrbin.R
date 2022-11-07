@@ -79,49 +79,68 @@ setNoiseLevels(mrbinResults,plotOnly=TRUE)
 
 
 ###################################################
-### code chunk number 8: mrbin.Rnw:243-244 (eval = FALSE)
+### code chunk number 8: mrbin.Rnw:246-247 (eval = FALSE)
 ###################################################
 ## mrbinResults<-setNoiseLevels(mrbinResults)
 
 
 ###################################################
-### code chunk number 9: mrbin.Rnw:256-257 (eval = FALSE)
+### code chunk number 9: mrbin.Rnw:259-260 (eval = FALSE)
 ###################################################
 ## mrbinResults<-removeNoise(mrbinResults)
 
 
 ###################################################
-### code chunk number 10: mrbin.Rnw:262-263 (eval = FALSE)
+### code chunk number 10: mrbin.Rnw:265-266 (eval = FALSE)
 ###################################################
 ## mrbinResults<-atnv(mrbinResults)
 
 
 ###################################################
-### code chunk number 11: mrbin.Rnw:269-270 (eval = FALSE)
+### code chunk number 11: mrbin.Rnw:273-275 (eval = FALSE)
+###################################################
+## mrbinResults<-setDilutionFactors(mrbinResults)
+## mrbinResults<-dilutionCorrection(mrbinResults)
+
+
+###################################################
+### code chunk number 12: mrbin.Rnw:281-282 (eval = FALSE)
 ###################################################
 ## mrbinResults<-PQNScaling(mrbinResults)
 
 
 ###################################################
-### code chunk number 12: mrbin.Rnw:275-276 (eval = FALSE)
+### code chunk number 13: mrbin.Rnw:289-290 (eval = FALSE)
 ###################################################
 ## mrbinResults<-logTrafo(mrbinResults)
 
 
 ###################################################
-### code chunk number 13: mrbin.Rnw:281-282 (eval = FALSE)
+### code chunk number 14: mrbin.Rnw:297-298 (eval = FALSE)
+###################################################
+## mrbinResults<-unitVarianceScaling(mrbinResults)
+
+
+###################################################
+### code chunk number 15: mrbin.Rnw:303-304 (eval = FALSE)
 ###################################################
 ## plotResults(mrbinResults)
 
 
 ###################################################
-### code chunk number 14: mrbin.Rnw:289-290 (eval = FALSE)
+### code chunk number 16: mrbin.Rnw:312-313 (eval = FALSE)
+###################################################
+## mrbinResults<-removeSpectrum(mrbinResults)
+
+
+###################################################
+### code chunk number 17: mrbin.Rnw:321-322 (eval = FALSE)
 ###################################################
 ## mrbinResults<-metadatamrbin(mrbinResults)
 
 
 ###################################################
-### code chunk number 15: mrbin.Rnw:299-302
+### code chunk number 18: mrbin.Rnw:331-334
 ###################################################
 mrbinResults<-metadatamrbin(mrbinResults,metadata=list(
   projectTitle="Test project",
@@ -129,13 +148,13 @@ mrbinResults<-metadatamrbin(mrbinResults,metadata=list(
 
 
 ###################################################
-### code chunk number 16: mrbin.Rnw:308-309
+### code chunk number 19: mrbin.Rnw:340-341
 ###################################################
 plotPCA(mrbinResults)
 
 
 ###################################################
-### code chunk number 17: mrbin.Rnw:319-328
+### code chunk number 20: mrbin.Rnw:351-360
 ###################################################
 mrbinResults<-editmetabolitesmrbin(mrbinResults,borders=matrix(c(
       1.346,1.324,21,23,
@@ -149,13 +168,13 @@ mrbinResults<-editmetabolitesmrbin(mrbinResults,borders=matrix(c(
 
 
 ###################################################
-### code chunk number 18: mrbin.Rnw:333-334
+### code chunk number 21: mrbin.Rnw:365-366
 ###################################################
 plotPCA(mrbinResults,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 19: mrbin.Rnw:345-353 (eval = FALSE)
+### code chunk number 22: mrbin.Rnw:377-385 (eval = FALSE)
 ###################################################
 ## mrbinResults<-editmrbin(
 ##   mrbinResults,
@@ -168,19 +187,19 @@ plotPCA(mrbinResults,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 20: mrbin.Rnw:358-359 (eval = FALSE)
+### code chunk number 23: mrbin.Rnw:390-391 (eval = FALSE)
 ###################################################
 ## mrbinResults$changeLog
 
 
 ###################################################
-### code chunk number 21: mrbin.Rnw:365-366
+### code chunk number 24: mrbin.Rnw:397-398
 ###################################################
 checkmrbin(mrbinResults)
 
 
 ###################################################
-### code chunk number 22: mrbin.Rnw:374-389 (eval = FALSE)
+### code chunk number 25: mrbin.Rnw:406-421 (eval = FALSE)
 ###################################################
 ## mrbinResults2D<-mrbin(setDefault=TRUE,parameters=list(dimension="2D",
 ##                binwidth2D=0.3,
@@ -200,7 +219,7 @@ checkmrbin(mrbinResults)
 
 
 ###################################################
-### code chunk number 23: mrbin.Rnw:391-409
+### code chunk number 26: mrbin.Rnw:423-441
 ###################################################
 mrbinResults2D<-mrbin(silent=TRUE,#this suppresses all interactive prompts
      setDefault=TRUE,
@@ -223,19 +242,19 @@ mrbinResults2D<-mrbin(silent=TRUE,#this suppresses all interactive prompts
 
 
 ###################################################
-### code chunk number 24: mrbin.Rnw:416-417
+### code chunk number 27: mrbin.Rnw:448-449
 ###################################################
 setNoiseLevels(mrbinResults2D,plotOnly=TRUE)
 
 
 ###################################################
-### code chunk number 25: mrbin.Rnw:429-430 (eval = FALSE)
+### code chunk number 28: mrbin.Rnw:461-462 (eval = FALSE)
 ###################################################
 ## load("C:/Users/User/Documents/mrbin.Rdata")
 
 
 ###################################################
-### code chunk number 26: mrbin.Rnw:438-441
+### code chunk number 29: mrbin.Rnw:470-473
 ###################################################
 mrbinResults2D<-metadatamrbin(mrbinResults,metadata=list(
   projectTitle="Test project",
@@ -243,13 +262,13 @@ mrbinResults2D<-metadatamrbin(mrbinResults,metadata=list(
 
 
 ###################################################
-### code chunk number 27: mrbin.Rnw:447-448
+### code chunk number 30: mrbin.Rnw:479-480
 ###################################################
 plotPCA(mrbinResults2D)
 
 
 ###################################################
-### code chunk number 28: mrbin.Rnw:454-463
+### code chunk number 31: mrbin.Rnw:486-495
 ###################################################
 mrbinResults2D<-editmetabolitesmrbin(mrbinResults2D,borders=matrix(c(
       1.346,1.324,21,23,
@@ -263,13 +282,13 @@ mrbinResults2D<-editmetabolitesmrbin(mrbinResults2D,borders=matrix(c(
 
 
 ###################################################
-### code chunk number 29: mrbin.Rnw:468-469
+### code chunk number 32: mrbin.Rnw:500-501
 ###################################################
 plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 30: mrbin.Rnw:478-501 (eval = FALSE)
+### code chunk number 33: mrbin.Rnw:510-533 (eval = FALSE)
 ###################################################
 ## results <- mrbin(parameters=list(dimension="1D",binMethod="Custom bin list",
 ##  specialBinList=matrix(c(5.45,5.2,0,160,
@@ -297,25 +316,25 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 31: mrbin.Rnw:521-522 (eval = FALSE)
+### code chunk number 34: mrbin.Rnw:553-554 (eval = FALSE)
 ###################################################
 ## mrbinResults<-mrbin()
 
 
 ###################################################
-### code chunk number 32: mrbin.Rnw:578-579 (eval = FALSE)
+### code chunk number 35: mrbin.Rnw:613-614 (eval = FALSE)
 ###################################################
 ## atnv(NMRdataMatrix,noiseLevelVector)
 
 
 ###################################################
-### code chunk number 33: mrbin.Rnw:594-595 (eval = FALSE)
+### code chunk number 36: mrbin.Rnw:629-630 (eval = FALSE)
 ###################################################
 ## mrplot()
 
 
 ###################################################
-### code chunk number 34: mrbin.Rnw:604-607 (eval = FALSE)
+### code chunk number 37: mrbin.Rnw:639-642 (eval = FALSE)
 ###################################################
 ## readBruker(dimension="1D",
 ##   folder=system.file("extdata/1/10/pdata/10",package="mrbin"))
@@ -323,7 +342,7 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 35: mrbin.Rnw:613-616 (eval = FALSE)
+### code chunk number 38: mrbin.Rnw:648-651 (eval = FALSE)
 ###################################################
 ## readBruker(dimension="1D",
 ##   folder="C:/Bruker/TopSpin3.6.1/data/guest/nmr/sample_1/12/pdata/10")
@@ -331,7 +350,7 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 36: mrbin.Rnw:622-625 (eval = FALSE)
+### code chunk number 39: mrbin.Rnw:657-660 (eval = FALSE)
 ###################################################
 ## readBruker(dimension="2D",
 ##   folder=system.file("extdata/1/12/pdata/10",package="mrbin"))
@@ -339,7 +358,7 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 37: mrbin.Rnw:630-637 (eval = FALSE)
+### code chunk number 40: mrbin.Rnw:665-672 (eval = FALSE)
 ###################################################
 ## zoom(left=4.6, right=2, top=10, bottom=150) #Exact zoom
 ## zoomIn() #Zoom in
@@ -351,7 +370,7 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 38: mrbin.Rnw:642-646 (eval = FALSE)
+### code chunk number 41: mrbin.Rnw:677-681 (eval = FALSE)
 ###################################################
 ## contMin() #Decrease minimum contour level (show more small peaks)
 ## contPlus() #Increase minimum contour level (remove small peaks)
@@ -360,7 +379,7 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 
 
 ###################################################
-### code chunk number 39: mrbin.Rnw:666-684 (eval = FALSE)
+### code chunk number 42: mrbin.Rnw:701-719 (eval = FALSE)
 ###################################################
 ## #First, define group membership and create the example feature data
 ## group<-factor(c(rep("Group1",4),rep("Group2",5)))

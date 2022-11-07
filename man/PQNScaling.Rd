@@ -36,7 +36,7 @@ PQNScaling(
 \item{errorsAsWarnings}{If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.}
 }
 \value{
-NMRdata An invisible matrix or mrbin object containing scaled NMR data.
+An invisible matrix or mrbin object containing scaled NMR data.
 }
 \description{
 This function performs PQN scaling. To further exclude unreliable noise, only

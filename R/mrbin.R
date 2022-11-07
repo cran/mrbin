@@ -38,7 +38,7 @@ NULL
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage("mrbin 1.7.0\nFor instructions and examples, please type: vignette('mrbin')")
+    packageStartupMessage("mrbin 1.7.1\nFor instructions and examples, please type: vignette('mrbin')")
 }
 
 
@@ -623,21 +623,24 @@ resetEnv<-function(){
                "dimension","binMethod","specialBinList","binRegion","referenceScaling",
                "removeSolvent","solventRegion","removeAreas","removeAreaList",
                "sumBins","sumBinList",
-               "noiseRemoval","noiseThreshold","PQNScaling","fixNegatives","logTrafo","PQNminimumFeatures",
+               "noiseRemoval","noiseThreshold","dilutionCorrection","PQNScaling",
+               "fixNegatives","logTrafo","unitVarianceScaling","PQNminimumFeatures",
                "PQNIgnoreSugarArea","PQNsugarArea","saveFiles","useAsNames","outputFileName",
-               #"verbose","warningFlag","defineGroups","Factors","trimZeros","createBins","useMeanIntensityForBins",
                "PCAtitlelength","PCA","tryParallel","NMRfolders"
                ),mrbin.env)
     assign("requiredParam1D",c(
                "binwidth1D","reference1D","signal_to_noise1D","noiseRange1d",
-               #"previewRegion1D","noisePreviewRegion1D",
                mrbin.env$requiredParam
                ),mrbin.env)
     assign("requiredParam2D",c(
                "binwidth2D","binheight","reference2D","signal_to_noise2D","cropHSQC",
                "noiseRange2d","croptopRight","croptopLeft","cropbottomRight","cropbottomLeft",
-               #"previewRegion2D","noisePreviewRegion2D",
                mrbin.env$requiredParam
+               ),mrbin.env)
+    assign("requiredMetadata",c(
+               "projectTitle","projectIdentifier","projectDescription","projectAuthors",
+               "projectApprovals","sampleType","organism","solvent","pH","dilutionFactors",
+               "factors","metaData","metaboliteIdentities"
                ),mrbin.env)
     assign("mrbin", createmrbin(),mrbin.env)
     assign("parameters_copy",mrbin.env$mrbin$parameters,mrbin.env)
@@ -756,7 +759,6 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                                           preselect="Edit parameters",
                                           title="Edit parameters or use as is?",graphics=TRUE)
          if(length(selectionRepeat2)==0|selectionRepeat=="") stopTMP<-TRUE
-         #if(selectionRepeat2=="Go back"&!stopTMP) selectStep<-selectStep-2
          if(selectionRepeat2=="Review parameters"&!stopTMP) selectionRepeat<-"Review parameters"
          if(selectionRepeat2=="Use parameters from file without changes"&!stopTMP) selectionRepeat<-"Use current parameters"
        }
@@ -1116,7 +1118,6 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                       }
                       if(!stopTMP){
                         if(addbinRegion=="Yes"){
-                          #mrbin.env$paramChangeFlag<-TRUE
                           mrbin.env$mrbin$parameters$specialBinList<-rbind(mrbin.env$mrbin$parameters$specialBinList,c(0,0,0,0))
                           if(nrow(mrbin.env$mrbin$parameters$specialBinList)==1){
                             rownames(mrbin.env$mrbin$parameters$specialBinList)<-""
@@ -1815,7 +1816,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                                  mrbin.env$mrbinTMP$currentSpectrumTitle,
                                  mrbin.env$mrbinTMP$currentSpectrumFolderName_EXPNO),
                                  "\", ...)",sep="")
-            NamesDictTMP2<-names(NamesDictTMP)#paste(NamesDictTMP," (",c(mrbin.env$mrbinTMP$currentSpectrumFolderName,
+            NamesDictTMP2<-names(NamesDictTMP)
             names(NamesDictTMP2)<-NamesDictTMP
             useAsNames<-utils::select.list(c(names(NamesDictTMP),"Go back"),
                                       preselect=NamesDictTMP2[mrbin.env$mrbin$parameters$useAsNames],
@@ -2042,7 +2043,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
    if(!silent){
     lastStepDone<-FALSE
     if(selectionRepeat=="Use current parameters without changes"&!stopTMP){
-       selectStep<-21
+       selectStep<-25
        lastStepDone<-TRUE
     }
     while(!lastStepDone&!stopTMP){
@@ -2081,6 +2082,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
            if(selectStep==17){#Remove noise
               if(!stopTMP){
                 if(mrbin.env$mrbin$parameters$verbose){
+                  message("Hint: All processing steps can be performed later if you skip them now")
                   message("Hint: Remove noise to increase statistical power")
                   utils::flush.console()
                 }
@@ -2101,7 +2103,34 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                 }
               }
             }
-            if(selectStep==18){#PQN scaling
+            if(selectStep==18){#Dilution correction scaling
+              if(!stopTMP){
+                if(!stopTMP&mrbin.env$mrbin$parameters$verbose){
+                  message("Hint: Use if volumes or weights differ between samples")
+                  utils::flush.console()
+                }
+                dilutionCorrection<-utils::select.list(c("Yes","No","Go back"),
+                       preselect=mrbin.env$mrbin$parameters$dilutionCorrection,
+                       title = "Dilution correction?",graphics=TRUE)
+                if(length(dilutionCorrection)==0|dilutionCorrection=="") stopTMP<-TRUE
+                if(!stopTMP&!dilutionCorrection=="Go back"){
+                  if(!dilutionCorrection==mrbin.env$mrbin$parameters$dilutionCorrection){
+                   mrbin.env$mrbin<-editmrbin(mrbinObject=mrbin.env$mrbin,
+                     functionName="mrbin::mrbin",
+                     versionNumber=as.character(utils::packageVersion("mrbin")),
+                     parameters=list(dilutionCorrection=dilutionCorrection),verbose=FALSE)
+                  }
+                  if(mrbin.env$mrbin$parameters$dilutionCorrection=="Yes"){
+                    mrbin.env$mrbin<-setDilutionFactors(mrbin.env$mrbin)
+                  }
+                }
+                if(!stopTMP&(dilutionCorrection=="Go back")){
+                   selectStep<-selectStep-2
+                }
+                if(!stopTMP) selectStep<-selectStep+1
+              }
+            }
+            if(selectStep==19){#PQN scaling
               if(!stopTMP){
                 PQNScalingIgnoreSugar<-""
                 if(!stopTMP&mrbin.env$mrbin$parameters$verbose){
@@ -2143,7 +2172,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                 if(!stopTMP) selectStep<-selectStep+1
               }
             }
-            if(selectStep==19){#Replace negative values
+            if(selectStep==20){#Replace negative values
               if(!stopTMP&mrbin.env$mrbin$parameters$verbose){
                 message("Hint: Replace negative values if you plan to do log transform")
                 utils::flush.console()
@@ -2166,17 +2195,17 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                 if(!stopTMP) selectStep<-selectStep+1
               }
             }
-            if(selectStep==20){#Log scaling
+            if(selectStep==21){#Log scaling
               if(!stopTMP){
-               if(mrbin.env$mrbin$parameters$fixNegatives=="Yes"|mrbin.env$mrbin$parameters$logTrafo=="Yes"){
+               #if(mrbin.env$mrbin$parameters$fixNegatives=="Yes"|mrbin.env$mrbin$parameters$logTrafo=="Yes"){
                 if(!stopTMP&mrbin.env$mrbin$parameters$verbose){
-                  message("Hint: Makes data more normal and transforms to fold change space.")
+                  message("Hint: Makes data more normal but breaks linearity. Requires positive data.")
                   utils::flush.console()
                 }
                 preselectTMP<-mrbin.env$mrbin$parameters$logTrafo
-                if(!mrbin.env$mrbin$parameters$fixNegatives=="Yes"){
-                  preselectTMP<-"No"
-                }
+                #if(!mrbin.env$mrbin$parameters$fixNegatives=="Yes"){
+                #  preselectTMP<-"No"
+                #}
                 logTrafo<-utils::select.list(c("Yes","No","Go back"),preselect=preselectTMP,
                                       title="Log transformation?",graphics=TRUE)
                 if(length(logTrafo)==0|logTrafo=="") stopTMP<-TRUE
@@ -2190,18 +2219,41 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                 if(!stopTMP&logTrafo=="Go back"){
                    selectStep<-selectStep-2
                 }
-               }
+               #}
                if(!stopTMP) selectStep<-selectStep+1
               }
             }
-       if(selectStep>=21){
+            if(selectStep==22){#Unit variance scaling
+              if(!stopTMP){
+                if(!stopTMP&mrbin.env$mrbin$parameters$verbose){
+                  message("Hint: Usually not required. Breaks linearity.")
+                  utils::flush.console()
+                }
+                preselectTMP<-mrbin.env$mrbin$parameters$unitVarianceScaling
+                unitVarianceScaling<-utils::select.list(c("Yes","No","Go back"),preselect=preselectTMP,
+                                      title="Unit variance scaling?",graphics=TRUE)
+                if(length(unitVarianceScaling)==0|unitVarianceScaling=="") stopTMP<-TRUE
+                if(!stopTMP&!unitVarianceScaling=="Go back"&!unitVarianceScaling==mrbin.env$mrbin$parameters$unitVarianceScaling){
+                     mrbin.env$mrbin<-editmrbin(mrbinObject=mrbin.env$mrbin,
+                       functionName="mrbin::mrbin",
+                       versionNumber=as.character(utils::packageVersion("mrbin")),
+                       parameters=list(unitVarianceScaling=unitVarianceScaling),
+                       verbose=FALSE)
+                }
+                if(!stopTMP&unitVarianceScaling=="Go back"){
+                   selectStep<-selectStep-2
+                }
+               #}
+               if(!stopTMP) selectStep<-selectStep+1
+              }
+            }
+       if(selectStep>=23){
          if(!stopTMP)  lastStepDone<-TRUE
        }
      }
     }
    }
  if(!stopTMP){
-   #if(mrbin.env$mrbin$parameters$showSpectrumPreview=="Yes") par(parTMP)
    mrbin.env$mrbin<-mrbinrun(createbins=FALSE,process=TRUE,mrbinResults=mrbin.env$mrbin,
      silent=silent)
    if(mrbin.env$mrbin$parameters$verbose){
@@ -2209,11 +2261,8 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
          functionName="mrbin::mrbin",
          versionNumber=as.character(utils::packageVersion("mrbin")),
          parameters=list(createCode=printParameters()),verbose=FALSE)
-       #mrbin.env$mrbin$parameters$createCode<-printParameters()
    }
-   gc()
    invisible(mrbin.env$mrbin)
-   #}
  }
 }
 
@@ -2347,9 +2396,11 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
       #create and save noise plots
       if(silent&mrbinResults$parameters$saveFiles=="Yes") setNoiseLevels(mrbinResults,plotOnly=TRUE)
       if(mrbinResults$parameters$noiseRemoval=="Yes") mrbinResults<-removeNoise(mrbinResults,verbose=FALSE)
+      if(mrbinResults$parameters$dilutionCorrection=="Yes") mrbinResults<-dilutionCorrection(mrbinResults)
       if(mrbinResults$parameters$fixNegatives=="Yes") mrbinResults<-atnv(mrbinResults,verbose=FALSE)
       if(mrbinResults$parameters$PQNScaling=="Yes") mrbinResults<-PQNScaling(mrbinResults,verbose=FALSE)
       if(mrbinResults$parameters$logTrafo=="Yes") mrbinResults<-logTrafo(mrbinResults,verbose=FALSE)
+      if(mrbinResults$parameters$unitVarianceScaling=="Yes") mrbinResults<-unitVarianceScaling(mrbinResults,verbose=FALSE)
       if(mrbinResults$parameters$verbose){
          message("done.\n", appendLF = FALSE)
          utils::flush.console()
@@ -2397,13 +2448,78 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
        }
     }
     if(mrbinResults$parameters$PCA=="Yes"){
-      gc()
       if(mrbin.env$mrbin$parameters$saveFiles=="Yes"|process|!silent){
         plotResults(mrbinResults,defineGroups=defineGroups,process=process)
       }
     }
     invisible(mrbinResults)
   }
+}
+
+#' A function for setting dilution factors.
+#'
+#' This function edits the dilution factors of an mrbin object but does not change the bin data.
+#' @param mrbinObject An mrbin object
+#' @param dilutionFactors An optional vector of dilution factors. If provided, no user input is requested
+#' @param errorsAsWarnings If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.
+#' @return An invisible mrbin object
+#' @export
+#' @examples
+#'  mrbinObject<-mrbin(silent=TRUE,
+#'                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
+#'                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
+#'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
+#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
+#'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
+#'                               system.file("extdata/3/10/pdata/10",package="mrbin"))
+#'                    ))
+#'  mrbinObject<-setDilutionFactors(mrbinObject,dilutionFactors=c(1.5,2))
+
+setDilutionFactors<-function(mrbinObject,dilutionFactors=NULL,errorsAsWarnings=FALSE){
+  stopTMP<-FALSE
+  if(is.null(dilutionFactors)){
+     yesOptionTMP<-NULL
+     optionTMP<-"Create new list"
+     if(length(mrbinObject$metadata$dilutionFactors)==
+        nrow(mrbinObject$bins)){
+         yesOptionTMP<-c("Keep current dilution factors","Edit current dilution factors")
+         optionTMP<-yesOptionTMP[1]
+     }
+     selectionFactors<-utils::select.list(c(yesOptionTMP,
+                     "Create new list"),
+                     preselect=optionTMP,
+                     title = "Use previous dilution factors?",graphics=TRUE)
+     if(length(selectionFactors)==0|selectionFactors=="") stopTMP<-TRUE
+     if(!stopTMP&!selectionFactors=="Go back"){
+       #if(selectionFactors=="Edit current dilution factors"){
+         dilutionFactors<-mrbinObject$metadata$dilutionFactors
+       #}
+       if(selectionFactors=="Create new list"){
+         dilutionFactors<-rep(1,nrow(mrbinObject$bins))
+       }
+       if(!selectionFactors=="Keep current dilution factors"){
+        for(idilutionFactors in 1:length(dilutionFactors)){
+           TMP<-readline(prompt=paste("Enter dilution factor for sample ",
+             rownames(mrbinObject$bins)[idilutionFactors],
+             ", enter to keep ",dilutionFactors[idilutionFactors],
+             ": ",sep=""))
+           if(!TMP==""&!is.na(as.numeric(TMP))) dilutionFactors[idilutionFactors]<-as.numeric(TMP)
+        }
+       }
+     }
+  }
+  if(!length(dilutionFactors)==nrow(mrbinObject$bins)){
+    if(!errorsAsWarnings) stop("Data dimension does not match the number of provided dilution factors.")
+    warning("Data dimension does not match the number of provided dilution factors.")
+  }
+  if(!stopTMP&!identical(dilutionFactors,mrbinObject$metadata$dilutionFactors)){
+    mrbinObject<-editmrbin(mrbinObject=mrbinObject,
+         functionName="mrbin::setDilutionFactors",
+         versionNumber=as.character(utils::packageVersion("mrbin")),
+         metadata=list(dilutionFactors=dilutionFactors),
+         verbose=FALSE)
+  }
+  invisible(mrbinObject)
 }
 
 #' A function for setting and plotting noise levels.
@@ -2441,7 +2557,6 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,showSpectrumPreview=NULL){
         !identical(mrbinObject$parameters$NMRfolders,
         mrbin.env$mrbin$parameters$NMRfolders)
         ){
-          #mrbin.env$mrbin$parameters$dimension<-mrbinObject$parameters$dimension
           mrbin.env$mrbinTMP$currentFolder<-mrbinObject$parameters$NMRfolders[1]
           readNMR2(dimension=mrbinObject$parameters$dimension,
                    NMRvendor=mrbinObject$parameters$NMRvendor,
@@ -2912,59 +3027,63 @@ metadatamrbin<-function(mrbinResults,metadata=NULL){
        message(paste("Preview of ",iValues[i],": ",
          substr(paste(mrbinResults$metadata[[iValues[i]]],sep=" ",collapse=" "),1,45),sep=""))
        utils::flush.console()
-       if(iValues[i]=="factors"){#Define groups
-        selectionFactors<-""
-        defineGroups<-utils::select.list(c("Edit factors",#"Use a column from metadata data.frame",
-                                  "Keep","Go back"),
-                                  preselect="Keep",
-                                  title = "Edit factors for PCA",graphics=TRUE)
-        if(length(defineGroups)==0|defineGroups=="") stopTMP<-TRUE
-        if(!stopTMP){
-         if(defineGroups=="Go back") i<-i-2
-         if(defineGroups=="Edit factors"){
-             if(!is.null(mrbinResults$metadata$factors)){
-               if(length(mrbinResults$metadata$factors)==length(mrbinResults$parameters$NMRfolders)){
-                 yesOptionTMP<-paste("Use previous factor list (",
-                                     paste(mrbinResults$metadata$factors[1:min(3,length(mrbinResults$metadata$factors))],
-                                           sep=", ",collapse=", "),
-                                     ", ...)",sep="")
-                 selectionFactors<-utils::select.list(c(yesOptionTMP,"No"),
-                                   preselect=yesOptionTMP,
-                                   title = "Use previous factor list?",graphics=TRUE)
-                 if(length(selectionFactors)==0|selectionFactors=="") stopTMP<-TRUE
-                 if(!stopTMP&selectionFactors=="No")  mrbinResults<-setFactors(mrbinResults)
-               } else {
-                 mrbinResults<-setFactors(mrbinResults)
-               }
-            } else {
-              mrbinResults<-setFactors(mrbinResults)
+       if(iValues[i]=="dilutionFactors"){#Define dilution
+          mrbinResults<-setDilutionFactors(mrbinResults)
+       } else {
+         if(iValues[i]=="factors"){#Define groups
+          selectionFactors<-""
+          defineGroups<-utils::select.list(c("Edit factors",#"Use a column from metadata data.frame",
+                                    "Keep","Go back"),
+                                    preselect="Keep",
+                                    title = "Edit factors for PCA",graphics=TRUE)
+          if(length(defineGroups)==0|defineGroups=="") stopTMP<-TRUE
+          if(!stopTMP){
+           if(defineGroups=="Go back") i<-i-2
+           if(defineGroups=="Edit factors"){
+               if(!is.null(mrbinResults$metadata$factors)){
+                 if(length(mrbinResults$metadata$factors)==length(mrbinResults$parameters$NMRfolders)){
+                   yesOptionTMP<-paste("Use previous factor list (",
+                                       paste(mrbinResults$metadata$factors[1:min(3,length(mrbinResults$metadata$factors))],
+                                             sep=", ",collapse=", "),
+                                       ", ...)",sep="")
+                   selectionFactors<-utils::select.list(c(yesOptionTMP,"No"),
+                                     preselect=yesOptionTMP,
+                                     title = "Use previous factor list?",graphics=TRUE)
+                   if(length(selectionFactors)==0|selectionFactors=="") stopTMP<-TRUE
+                   if(!stopTMP&selectionFactors=="No")  mrbinResults<-setFactors(mrbinResults)
+                 } else {
+                   mrbinResults<-setFactors(mrbinResults)
+                 }
+              } else {
+                mrbinResults<-setFactors(mrbinResults)
+              }
             }
           }
-        }
-     } else {
-        defineGroups<-utils::select.list(c(paste("Edit ",iValues[i],sep=""),"Keep","Replace","Go back"),
-                              preselect="Keep",title=paste("Edit ",iValues[i],sep=""),graphics=TRUE)
-        if(length(defineGroups)==0|defineGroups=="") stopTMP<-TRUE
-        if(!stopTMP){
-         if(defineGroups=="Go back") i<-i-2
-         if(!defineGroups=="Keep"){
-          TMP<-NULL
-          if(defineGroups==paste("Edit ",iValues[i],sep="")){
-           TMP<-utils::edit(mrbinResults$metadata[[iValues[i]]])
-          }
-          if(defineGroups=="Replace"){
-           TMP<-readline(prompt=paste("Type new content, press enter to keep current content: ",sep=""))
-          }
-          if(!is.null(TMP)){
-             TMPlist<-list(TMP)
-             names(TMPlist)<-iValues[i]
-             mrbinResults<-editmrbin(mrbinResults,functionName="mrbin::metadatamrbin",
-                      versionNumber=as.character(utils::packageVersion("mrbin")),
-                      metadata=TMPlist,verbose=FALSE)
+       } else {
+          defineGroups<-utils::select.list(c(paste("Edit ",iValues[i],sep=""),"Keep","Replace","Go back"),
+                                preselect="Keep",title=paste("Edit ",iValues[i],sep=""),graphics=TRUE)
+          if(length(defineGroups)==0|defineGroups=="") stopTMP<-TRUE
+          if(!stopTMP){
+           if(defineGroups=="Go back") i<-i-2
+           if(!defineGroups=="Keep"){
+            TMP<-NULL
+            if(defineGroups==paste("Edit ",iValues[i],sep="")){
+             TMP<-utils::edit(mrbinResults$metadata[[iValues[i]]])
+            }
+            if(defineGroups=="Replace"){
+             TMP<-readline(prompt=paste("Type new content, press enter to keep current content: ",sep=""))
+            }
+            if(!is.null(TMP)){
+               TMPlist<-list(TMP)
+               names(TMPlist)<-iValues[i]
+               mrbinResults<-editmrbin(mrbinResults,functionName="mrbin::metadatamrbin",
+                        versionNumber=as.character(utils::packageVersion("mrbin")),
+                        metadata=TMPlist,verbose=FALSE)
 
+            }
+           }
           }
          }
-        }
        }
      }
      i<-i+1
@@ -2986,131 +3105,282 @@ metadatamrbin<-function(mrbinResults,metadata=NULL){
 printParameters<-function(){
   if(!exists("mrbin.env", mode="environment")) .onLoad()
   if(mrbin.env$mrbin$parameters$verbose){
-      if(mrbin.env$mrbin$parameters$dimension=="1D") paramNamesTMP<-mrbin.env$requiredParam1D
-      if(mrbin.env$mrbin$parameters$dimension=="2D") paramNamesTMP<-mrbin.env$requiredParam2D
-      printTMPline<-paste("results<-mrbin(silent=FALSE,parameters=list(")
-      printTMP<-NULL
-      counter<-0
-      for(i in paramNamesTMP){
-        counter<-counter+1
-        if(is.character(mrbin.env$mrbin$parameters[[i]])){
-          sepSymbol<-"\""
-        } else {
-          sepSymbol<-""
-        }
-        returnSymbol<-"\n  "
-        #if(length(mrbin.env$mrbin$parameters[[i]])<17&!i=="NMRfolders"){
-        if(!i=="NMRfolders"){
-          returnSymbol<-""
-        } #else {
-        #}
-        vectorSymbol1<-""
-        vectorSymbol2<-""
-        if(is.matrix(mrbin.env$mrbin$parameters[[i]])){
-          if(nrow(mrbin.env$mrbin$parameters[[i]])==0){
-            vectorSymbol1<-"matrix(nrow=0"
-            vectorSymbol2<-paste(",ncol=",ncol(mrbin.env$mrbin$parameters[[i]]),")",sep="")
+    if(mrbin.env$mrbin$parameters$dimension=="1D") paramNamesTMP0<-mrbin.env$requiredParam1D
+    if(mrbin.env$mrbin$parameters$dimension=="2D") paramNamesTMP0<-mrbin.env$requiredParam2D
+    paramNamesTMP<-NULL
+    for(irequiredMetadata in paramNamesTMP0){
+      if(!is.null(mrbin.env$mrbin$parameters[[irequiredMetadata]])){
+        if(!identical(mrbin.env$mrbin$parameters[[irequiredMetadata]],"")){
+          if(is.matrix(mrbin.env$mrbin$parameters[[irequiredMetadata]])){
+            if(nrow(mrbin.env$mrbin$parameters[[irequiredMetadata]])>0){
+              paramNamesTMP<-c(paramNamesTMP,irequiredMetadata)
+            }
           } else {
-            vectorSymbol1<-"matrix(c(\n  "
-            if(is.null(rownames(mrbin.env$mrbin$parameters[[i]]))){
-              vectorSymbol2<-paste("\n  ),ncol=",ncol(mrbin.env$mrbin$parameters[[i]]),",byrow=TRUE)",sep="")
-            } else {
-              vectorSymbol2<-paste("\n  ),ncol=",ncol(mrbin.env$mrbin$parameters[[i]]),
-                             ",dimnames=list(c(\n  \"",
-                             paste(rownames(mrbin.env$mrbin$parameters[[i]]),sep="\",\"",collapse="\",\""),
-                             "\"\n  ),NULL),byrow=TRUE",
-                             ")",sep="")
-            }
+            paramNamesTMP<-c(paramNamesTMP,irequiredMetadata)
           }
         }
-        if(length(mrbin.env$mrbin$parameters[[i]])>1){
-          if(is.vector(mrbin.env$mrbin$parameters[[i]])){
-            vectorSymbol1<-"c("
-            vectorSymbol2<-")"
-            if(i=="NMRfolders"){
-              vectorSymbol1<-"c(\n  "
-              vectorSymbol2<-"\n )"
-            }
+      }
+    }
+    printTMPline<-paste("results<-mrbin(silent=FALSE,parameters=list(")
+    printTMP<-NULL
+    counter<-0
+    for(i in paramNamesTMP){
+      counter<-counter+1
+      if(is.character(mrbin.env$mrbin$parameters[[i]])){
+        sepSymbol<-"\""
+      } else {
+        sepSymbol<-""
+      }
+      returnSymbol<-"\n  "
+      if(!i=="NMRfolders"){
+        returnSymbol<-""
+      }
+      vectorSymbol1<-""
+      vectorSymbol2<-""
+      if(is.matrix(mrbin.env$mrbin$parameters[[i]])){
+        if(nrow(mrbin.env$mrbin$parameters[[i]])==0){
+          vectorSymbol1<-"matrix(nrow=0"
+          vectorSymbol2<-paste(",ncol=",ncol(mrbin.env$mrbin$parameters[[i]]),")",sep="")
+        } else {
+          vectorSymbol1<-"matrix(c(\n  "
+          if(is.null(rownames(mrbin.env$mrbin$parameters[[i]]))){
+            vectorSymbol2<-paste("\n  ),ncol=",ncol(mrbin.env$mrbin$parameters[[i]]),",byrow=TRUE)",sep="")
+          } else {
+            vectorSymbol2<-paste("\n  ),ncol=",ncol(mrbin.env$mrbin$parameters[[i]]),
+                           ",dimnames=list(c(\n  \"",
+                           paste(rownames(mrbin.env$mrbin$parameters[[i]]),sep="\",\"",collapse="\",\""),
+                           "\"\n  ),NULL),byrow=TRUE",
+                           ")",sep="")
           }
         }
+      }
+      if(length(mrbin.env$mrbin$parameters[[i]])>1){
+        if(is.vector(mrbin.env$mrbin$parameters[[i]])){
+          vectorSymbol1<-"c("
+          vectorSymbol2<-")"
+          if(i=="NMRfolders"){
+            vectorSymbol1<-"c(\n  "
+            vectorSymbol2<-"\n )"
+          }
+        }
+      }
+      if(is.factor(mrbin.env$mrbin$parameters[[i]])){
+        vectorSymbol1<-"factor(c("
+        vectorSymbol2<-"))"
+        if(nchar(paste(mrbin.env$mrbin$parameters[[i]],sep=",",collapse=","))>60){
+          vectorSymbol1<-"factor(c(\n  "
+          vectorSymbol2<-"\n  ))"
+        }
+        sepSymbol<-"\""
+      }
+      sepTMP<-paste(sepSymbol,",",returnSymbol,sepSymbol,sep="")
+      sepTMPReturn<-paste(sepSymbol,",","\n  ",sepSymbol,sep="")
+      if(is.null(mrbin.env$mrbin$parameters[[i]])){
+          valueTMP<-"NULL"
+      } else {
         if(is.factor(mrbin.env$mrbin$parameters[[i]])){
-          vectorSymbol1<-"factor(c("
-          vectorSymbol2<-"))"
-          if(nchar(paste(mrbin.env$mrbin$parameters[[i]],sep=",",collapse=","))>60){
-            vectorSymbol1<-"factor(c(\n  "
-            vectorSymbol2<-"\n  ))"
-          }
-          sepSymbol<-"\""
-        }
-        sepTMP<-paste(sepSymbol,",",returnSymbol,sepSymbol,sep="")
-        sepTMPReturn<-paste(sepSymbol,",","\n  ",sepSymbol,sep="")
-        if(is.null(mrbin.env$mrbin$parameters[[i]])){
-            valueTMP<-"NULL"
-        } else {
-          if(is.factor(mrbin.env$mrbin$parameters[[i]])){
-            lengthCutOff2<-8
-            if(length(mrbin.env$mrbin$parameters[[i]])<=lengthCutOff2){
-              valueTMP<-paste(as.character(mrbin.env$mrbin$parameters[[i]]),sep=sepTMP,collapse=sepTMP)
-            } else {
-              valueTMP<-NULL
-              for(iFactorLengthTMP in 1:ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff2)){
-                sepFactorTMPTMP<-sepTMPReturn
-                if(iFactorLengthTMP==ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff2)){
-                  sepFactorTMPTMP<-""
-                }
-                valueTMP<-paste(valueTMP,
-                          paste(as.character(mrbin.env$mrbin$parameters[[i]])[((iFactorLengthTMP-1)*lengthCutOff2+1):
-                                 min(length(mrbin.env$mrbin$parameters[[i]]),(iFactorLengthTMP-1)*lengthCutOff2+lengthCutOff2)],
-                            sep=sepTMP,collapse=sepTMP),sepFactorTMPTMP,
-                          sep="",collapse="")
-              }
-            }
+          lengthCutOff2<-8
+          if(length(mrbin.env$mrbin$parameters[[i]])<=lengthCutOff2){
+            valueTMP<-paste(as.character(mrbin.env$mrbin$parameters[[i]]),sep=sepTMP,collapse=sepTMP)
           } else {
-            lengthCutOff<-12
-            if(length(mrbin.env$mrbin$parameters[[i]])<=lengthCutOff){
-              valueTMP<-paste(t(mrbin.env$mrbin$parameters[[i]]),sep=sepTMP,collapse=sepTMP)
-            } else {
-              valueTMP<-NULL
-              for(iFactorLengthTMP in 1:ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff)){
-                sepFactorTMPTMP<-sepTMPReturn
-                if(iFactorLengthTMP==ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff)){
-                  sepFactorTMPTMP<-""
-                }
-                valueTMP<-paste(valueTMP,
-                          paste(t(mrbin.env$mrbin$parameters[[i]])[((iFactorLengthTMP-1)*lengthCutOff+1):
-                                 min(length(mrbin.env$mrbin$parameters[[i]]),(iFactorLengthTMP-1)*lengthCutOff+lengthCutOff)],
-                            sep=sepTMP,collapse=sepTMP),sepFactorTMPTMP,
-                          sep="",collapse="")
+            valueTMP<-NULL
+            for(iFactorLengthTMP in 1:ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff2)){
+              sepFactorTMPTMP<-sepTMPReturn
+              if(iFactorLengthTMP==ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff2)){
+                sepFactorTMPTMP<-""
               }
+              valueTMP<-paste(valueTMP,
+                        paste(as.character(mrbin.env$mrbin$parameters[[i]])[((iFactorLengthTMP-1)*lengthCutOff2+1):
+                               min(length(mrbin.env$mrbin$parameters[[i]]),(iFactorLengthTMP-1)*lengthCutOff2+lengthCutOff2)],
+                          sep=sepTMP,collapse=sepTMP),sepFactorTMPTMP,
+                        sep="",collapse="")
+            }
+          }
+        } else {
+          lengthCutOff<-12
+          if(length(mrbin.env$mrbin$parameters[[i]])<=lengthCutOff){
+            valueTMP<-paste(t(mrbin.env$mrbin$parameters[[i]]),sep=sepTMP,collapse=sepTMP)
+          } else {
+            valueTMP<-NULL
+            for(iFactorLengthTMP in 1:ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff)){
+              sepFactorTMPTMP<-sepTMPReturn
+              if(iFactorLengthTMP==ceiling(length(mrbin.env$mrbin$parameters[[i]])/lengthCutOff)){
+                sepFactorTMPTMP<-""
+              }
+              valueTMP<-paste(valueTMP,
+                        paste(t(mrbin.env$mrbin$parameters[[i]])[((iFactorLengthTMP-1)*lengthCutOff+1):
+                               min(length(mrbin.env$mrbin$parameters[[i]]),(iFactorLengthTMP-1)*lengthCutOff+lengthCutOff)],
+                          sep=sepTMP,collapse=sepTMP),sepFactorTMPTMP,
+                        sep="",collapse="")
             }
           }
         }
-        if(counter<length(paramNamesTMP)){
-          TMPline<-paste(i,"=",vectorSymbol1,sepSymbol,valueTMP,
-                      sepSymbol,vectorSymbol2,",",sep="")
-          if((nchar(printTMPline)+nchar(TMPline))<=79){
-            printTMPline<-paste(printTMPline,TMPline,sep="")
-          } else {
-             printTMP<-paste(printTMP,printTMPline,"\n ",sep="")
-              printTMPline<-TMPline
-          }
+      }
+      if(counter<length(paramNamesTMP)){
+        TMPline<-paste(i,"=",vectorSymbol1,sepSymbol,valueTMP,
+                    sepSymbol,vectorSymbol2,",",sep="")
+        if((nchar(printTMPline)+nchar(TMPline))<=79){
+          printTMPline<-paste(printTMPline,TMPline,sep="")
         } else {
-          TMPline<-paste(i,"=",vectorSymbol1,sepSymbol,valueTMP,
-                      sepSymbol,vectorSymbol2,"",sep="")
-          if((nchar(printTMPline)+nchar(TMPline))<=77){
-            printTMP<-paste(printTMP,printTMPline,TMPline,"))\n",sep="")
+           printTMP<-paste(printTMP,printTMPline,"\n ",sep="")
+            printTMPline<-TMPline
+        }
+      } else {
+        TMPline<-paste(i,"=",vectorSymbol1,sepSymbol,valueTMP,
+                    sepSymbol,vectorSymbol2,"",sep="")
+        if((nchar(printTMPline)+nchar(TMPline))<=61){
+          printTMP<-paste(printTMP,printTMPline,TMPline,")",sep="")
+        } else {
+           printTMP<-paste(printTMP,printTMPline,"\n ",sep="")
+           printTMP<-paste(printTMP,TMPline,")",sep="")
+        }
+      }
+    }
+    #now metadata:
+    paramNamesTMP<-NULL
+    for(irequiredMetadata in mrbin.env$requiredMetadata){
+      if(!is.null(mrbin.env$mrbin$metadata[[irequiredMetadata]])){
+        if(!identical(mrbin.env$mrbin$metadata[[irequiredMetadata]],"")){
+          if(is.matrix(mrbin.env$mrbin$metadata[[irequiredMetadata]])){
+            if(nrow(mrbin.env$mrbin$metadata[[irequiredMetadata]])>0){
+              paramNamesTMP<-c(paramNamesTMP,irequiredMetadata)
+            }
           } else {
-             printTMP<-paste(printTMP,printTMPline,"\n ",sep="")
-             printTMP<-paste(printTMP,TMPline,"))\n",sep="")
+            paramNamesTMP<-c(paramNamesTMP,irequiredMetadata)
           }
-
+        }
+      }
+    }
+    if(!is.null(paramNamesTMP)){
+        printTMPline<-",\n metadata=list("
+        counter<-0
+        for(i in paramNamesTMP){
+          counter<-counter+1
+          if(is.character(mrbin.env$mrbin$metadata[[i]])){
+            sepSymbol<-"\""
+          } else {
+            sepSymbol<-""
+          }
+          returnSymbol<-""
+          vectorSymbol1<-""
+          vectorSymbol2<-""
+          if(is.matrix(mrbin.env$mrbin$metadata[[i]])){
+            if(nrow(mrbin.env$mrbin$metadata[[i]])==0){
+              vectorSymbol1<-"matrix(nrow=0"
+              vectorSymbol2<-paste(",ncol=",ncol(mrbin.env$mrbin$metadata[[i]]),")",sep="")
+            } else {
+              vectorSymbol1<-"matrix(c(\n  "
+              if(is.null(rownames(mrbin.env$mrbin$metadata[[i]]))){
+                vectorSymbol2<-paste("\n  ),ncol=",ncol(mrbin.env$mrbin$metadata[[i]]),
+                ",byrow=TRUE)",sep="")
+              } else {
+                vectorSymbol2<-paste("\n  ),ncol=",ncol(mrbin.env$mrbin$metadata[[i]]),
+                               ",dimnames=list(c(\n  \"",
+                               paste(rownames(mrbin.env$mrbin$metadata[[i]]),sep="\",\"",
+                               collapse="\",\""),
+                               "\"\n  ), ",
+                               "NULL",
+                               #"c(\n  \"",paste(colnames(mrbin.env$mrbin$metadata[[i]]),sep="\",\"",
+                               #collapse="\",\""),
+                               #"\")",
+                               "),byrow=TRUE",
+                               ")",sep="")
+              }
+            }
+          }
+          if(length(mrbin.env$mrbin$metadata[[i]])>1){
+            if(is.vector(mrbin.env$mrbin$metadata[[i]])){
+              vectorSymbol1<-"c("
+              vectorSymbol2<-")"
+            }
+          }
+          if(is.factor(mrbin.env$mrbin$metadata[[i]])){
+            vectorSymbol1<-"factor(c("
+            vectorSymbol2<-"))"
+            if(nchar(paste(mrbin.env$mrbin$metadata[[i]],sep=",",collapse=","))>60){
+              vectorSymbol1<-"factor(c(\n  "
+              vectorSymbol2<-"\n  ))"
+            }
+            sepSymbol<-"\""
+          }
+          sepTMP<-paste(sepSymbol,",",returnSymbol,sepSymbol,sep="")
+          sepTMPReturn<-paste(sepSymbol,",","\n  ",sepSymbol,sep="")
+          if(is.null(mrbin.env$mrbin$metadata[[i]])){
+              valueTMP<-"NULL"
+          } else {
+            if(is.factor(mrbin.env$mrbin$metadata[[i]])){
+              lengthCutOff2<-8
+              if(length(mrbin.env$mrbin$metadata[[i]])<=lengthCutOff2){
+                valueTMP<-paste(as.character(mrbin.env$mrbin$metadata[[i]]),sep=sepTMP,
+                collapse=sepTMP)
+              } else {
+                valueTMP<-NULL
+                for(iFactorLengthTMP in 1:ceiling(length(mrbin.env$mrbin$metadata[[i]])/
+                  lengthCutOff2)){
+                  sepFactorTMPTMP<-sepTMPReturn
+                  if(iFactorLengthTMP==ceiling(length(mrbin.env$mrbin$metadata[[i]])/
+                    lengthCutOff2)){
+                    sepFactorTMPTMP<-""
+                  }
+                  valueTMP<-paste(valueTMP,
+                            paste(as.character(mrbin.env$mrbin$metadata[[i]])[
+                                   ((iFactorLengthTMP-1)*lengthCutOff2+1):
+                                   min(length(mrbin.env$mrbin$metadata[[i]]),
+                                   (iFactorLengthTMP-1)*lengthCutOff2+lengthCutOff2)],
+                              sep=sepTMP,collapse=sepTMP),sepFactorTMPTMP,
+                            sep="",collapse="")
+                }
+              }
+            } else {
+              lengthCutOff<-12
+              if(length(mrbin.env$mrbin$metadata[[i]])<=lengthCutOff){
+                valueTMP<-paste(t(mrbin.env$mrbin$metadata[[i]]),sep=sepTMP,collapse=sepTMP)
+              } else {
+                valueTMP<-NULL
+                for(iFactorLengthTMP in 1:ceiling(length(mrbin.env$mrbin$metadata[[i]])/
+                  lengthCutOff)){
+                  sepFactorTMPTMP<-sepTMPReturn
+                  if(iFactorLengthTMP==ceiling(length(mrbin.env$mrbin$metadata[[i]])/
+                    lengthCutOff)){
+                    sepFactorTMPTMP<-""
+                  }
+                  valueTMP<-paste(valueTMP,
+                            paste(t(mrbin.env$mrbin$metadata[[i]])[((iFactorLengthTMP-1)*
+                                   lengthCutOff+1):
+                                   min(length(mrbin.env$mrbin$metadata[[i]]),
+                                   (iFactorLengthTMP-1)*lengthCutOff+lengthCutOff)],
+                              sep=sepTMP,collapse=sepTMP),sepFactorTMPTMP,
+                            sep="",collapse="")
+                }
+              }
+            }
+          }
+          if(counter<length(paramNamesTMP)){
+            TMPline<-paste(i,"=",vectorSymbol1,sepSymbol,valueTMP,
+                        sepSymbol,vectorSymbol2,",",sep="")
+            if((nchar(printTMPline)+nchar(TMPline))<=79){
+              printTMPline<-paste(printTMPline,TMPline,sep="")
+            } else {
+               printTMP<-paste(printTMP,printTMPline,"\n ",sep="")
+                printTMPline<-TMPline
+            }
+          } else {
+            TMPline<-paste(i,"=",vectorSymbol1,sepSymbol,valueTMP,
+                        sepSymbol,vectorSymbol2,"",sep="")
+            if((nchar(printTMPline)+nchar(TMPline))<=77){
+              printTMP<-paste(printTMP,printTMPline,TMPline,")",sep="")
+            } else {
+               printTMP<-paste(printTMP,printTMPline,"\n ",sep="")
+               printTMP<-paste(printTMP,TMPline,")",sep="")
+            }
+          }
         }
       }
       printTMP<-paste(
-        "\nTo recreate this data set, use the following code:\n\n##################################################\n\n",
+        "\n\nTo recreate this data set, use the following code:\n\n##################################################\n\n",
         printTMP,sep="")
       printTMP<-paste(printTMP,
-        "\n##################################################\n\nTo recreate this data set, use the code above this line.\n",
+        ")\n\n##################################################\n\nTo recreate this data set, use the code above this line.\n",
         sep="")
       if(mrbin.env$mrbin$parameters$saveFiles=="Yes"){
         printTMP<-paste(printTMP,"To load the saved data set, use the following code:\n\n",
@@ -3233,10 +3503,6 @@ setParam<-function(parameters=NULL,metadata=NULL){
            "These parameters are not used. Potentially they were created in a different mrbin version.",
            sep=""))
     }
-    #if(length(diffSet3)>0){
-    #   if(mrbin.env$mrbin$parameters$verbose) message(paste("Default values are used for missing parameters: ",
-    #       paste(diffSet3,sep=", ", collapse=", "),"\n",sep=""), appendLF = FALSE)
-    #}
     if(length(intersectSet)>0){
        for(iintersectSet in intersectSet){
             mrbin.env$mrbin$parameters[[iintersectSet]]<-parameters[[iintersectSet]]
@@ -3247,41 +3513,13 @@ setParam<-function(parameters=NULL,metadata=NULL){
            ".\n For exact reproduction of results, please get the old version at: www.kleinomicslab.com",
            sep=""))
     }
-  }# else {
-  #    stop("setParam: No parameters were provided.")
-  #}
-  if(!is.null(metadata)){
-    #mrbin.env$mrbin$parameters_copy<-mrbin.env$mrbin$parameters
-    #if("dimension"%in%names(parameters)){
-    #  dimTMP<-parameters$dimension
-    #} else {
-    #  dimTMP<-mrbin.env$mrbin$parameters$dimension
-    #}
-    #if(dimTMP=="1D") diffSet3<-setdiff(mrbin.env$requiredParam1D,names(parameters))
-    #if(dimTMP=="2D")
-    #diffSet3<-setdiff(mrbin.env$requiredParam2D,names(metdata))
-    #diffSet2<-setdiff(names(parameters)[!sapply(parameters, is.null)],names(mrbin.env$mrbin$parameters_copy))
-    #intersectSet<-intersect(names(parameters),names(mrbin.env$mrbin$parameters_copy))
-    #if(length(diffSet2)>0){
-    #   warning(paste("Unexpected parameters: ",
-    #       paste(diffSet2,sep=", ", collapse=", "),"\n",
-    #       "These parameters are not used. Potentially they were created in a different mrbin version.",
-    #       sep=""))
-    #}
-    #if(length(diffSet3)>0){
-    #   if(mrbin.env$mrbin$parameters$verbose) message(paste("Default values are used for missing parameters: ",
-    #       paste(diffSet3,sep=", ", collapse=", "),"\n",sep=""), appendLF = FALSE)
-    #}
+  }
+   if(!is.null(metadata)){
     if(length(metadata)>0){
        for(iintersectSet in names(metadata)){
             mrbin.env$mrbin$metadata[[iintersectSet]]<-metadata[[iintersectSet]]
        }
     }
-    #if(!as.character(utils::packageVersion("mrbin"))==mrbin.env$mrbin$parameters$mrbinversionTracker){
-    #   warning(paste("Imported file was created using another mrbin version: ",mrbin.env$mrbin$parameters$mrbinversionTracker,
-    #       ".\n For exact reproduction of results, please get the old version at: www.kleinomicslab.com",
-    #       sep=""))
-    #}
   }
 }
 
@@ -3358,18 +3596,55 @@ setCurrentSpectrum<-function(spectrumNumber=NULL){
 #' A function for removing a spectrum.
 #'
 #' This function lets the user pick spectra from a list for removal from data
-#' analysis. This function is meant only for use within the mrbin function.
-#' @return {None}
-#' @keywords internal
-#' @noRd
+#' analysis.
+#' @param mrbinResults An mrbin object. If not provided, the function works on the package environment
+#' @param spectra Character vector with NMR folder names to be excluded. If provided, no interactive selection will be shown
+#' @param verbose Should a summary be printed?
+#' @param errorsAsWarnings If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.
+#' @return An invisible mrbin object (only if an mrbin object was provided)
+#' @export
 #' @examples
-#' \donttest{ removeSpectrum() }
+#' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
+#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=FALSE,logTrafo="No",
+#'          noiseRemoval="No",
+#'          NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
+#'                       system.file("extdata/2/10/pdata/10",package="mrbin"),
+#'                       system.file("extdata/3/10/pdata/10",package="mrbin"))))
+#' mrbinResults<-removeSpectrum(mrbinResults,
+#'  spectra=c(system.file("extdata/2/10/pdata/10",package="mrbin")))
 
-removeSpectrum<-function(){
- if(!is.null(mrbin.env$mrbin$parameters$NMRfolders)){
-    listTMP<-utils::select.list(mrbin.env$mrbin$parameters$NMRfolders,preselect = NULL, multiple = TRUE,title ="Remove spectra, cancel to keep all",graphics=TRUE)
-    continueTMP<-FALSE
-    if(length(listTMP)>0){
+removeSpectrum<-function(mrbinResults=NULL,spectra=NULL,verbose=TRUE,errorsAsWarnings=FALSE){
+ if(!is.null(mrbinResults)){
+    transformations="Spectra removed"
+    if("Noise removed" %in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been noise removed previously, this would corrupt the data.")
+      warning("Data has been noise removed previously, this would corrupt the data.")
+    }
+    if("Unit variance scaled" %in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been unit variance scaled previously, this would corrupt the data.")
+      warning("Data has been unit variance scaled previously, this would corrupt the data.")
+    }
+    if("Atnv transformed"%in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been atnv transformed previously, this would corrupt the data.")
+      warning("Data has been atnv transformed previously, this would corrupt the data.")
+    }
+    if("PQN scaled" %in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been PQN transformed previously, this would corrupt the data.")
+      warning("Data has been PQN transformed previously, this would corrupt the data.")
+    }
+    NMRfolders<-mrbinResults$parameters$NMRfolders
+    factors<-mrbinResults$metadata$factors
+ } else {
+   NMRfolders<-mrbin.env$mrbin$parameters$NMRfolders
+   factors<-mrbin.env$mrbin$metadata$factors
+ }
+   listTMP<-spectra
+   if(is.null(spectra)){
+    listTMP<-utils::select.list(NMRfolders,preselect=NULL,
+      multiple=TRUE,title ="Remove spectra, cancel to keep all",graphics=TRUE)
+   }
+   continueTMP<-FALSE
+   if(length(listTMP)>0){
       if(length(listTMP)>1){
         continueTMP<-TRUE
       } else {
@@ -3378,27 +3653,25 @@ removeSpectrum<-function(){
         }
       }
       if(continueTMP){
-         if(length(mrbin.env$mrbin$metadata$factors)==length(mrbin.env$mrbin$parameters$NMRfolders)){
-           mrbin.env$mrbin$metadata$factors<-mrbin.env$mrbin$metadata$factors[-which(mrbin.env$mrbin$parameters$NMRfolders%in%listTMP),drop=FALSE]
+         if(length(factors)==length(NMRfolders)){
+           factors<-factors[-which(NMRfolders%in%listTMP),drop=FALSE]
          }
-#         if(!is.null(mrbin.env$mrbin$bins)){
-#           if(nrow(mrbin.env$mrbin$bins)==length(mrbin.env$mrbin$parameters$NMRfolders)){
-#            #if((nrow(mrbin.env$mrbin$bins)-length(listTMP))==1){
-#               mrbin.env$mrbin$bins<-mrbin.env$mrbin$bins[-which(rownames(mrbin.env$mrbin$bins)%in%listTMP),,drop=FALSE]
-#              #rownamesTMP<-rownames(mrbin.env$mrbin$bins)[-which(rownames(mrbin.env$mrbin$bins)%in%listTMP)]
-#              #colnamesTMP<-colnames(mrbin.env$mrbin$bins)
-#              #mrbin.env$mrbin$bins<-matrix(mrbin.env$mrbin$bins[-which(rownames(mrbin.env$mrbin$bins)%in%listTMP),],nrow=1)
-#              #rownames(mrbin.env$mrbin$bins)<-rownamesTMP
-#              #colnames(mrbin.env$mrbin$bins)<-colnamesTMP
-#            #} else {
-#            #   mrbin.env$mrbin$bins<-mrbin.env$mrbin$bins[-which(rownames(mrbin.env$mrbin$bins)%in%listTMP),,drop=FALSE]
-#            #}
-#           }
-#         }
-         mrbin.env$mrbin$parameters$NMRfolders<-mrbin.env$mrbin$parameters$NMRfolders[-which(mrbin.env$mrbin$parameters$NMRfolders%in%listTMP),drop=FALSE]
-      }
+         NMRfolders<-NMRfolders[-which(NMRfolders%in%listTMP),drop=FALSE]
+         if(!is.null(mrbinResults)){
+          mrbinResults<-editmrbin(mrbinObject=mrbinResults,
+           functionName="mrbin::removeSpectrum",
+           versionNumber=as.character(utils::packageVersion("mrbin")),
+           bins=mrbinResults$bins[-which(mrbinResults$parameters$NMRfolders%in%listTMP),,drop=FALSE],
+           parameters=list(NMRfolders=NMRfolders),
+           metadata=list(factors=factors),
+           transformations=transformations,verbose=verbose)
+         } else {
+             mrbin.env$mrbin$parameters$NMRfolders<-NMRfolders
+             mrbin.env$mrbin$metadata$factors<-factors
+         }
+        }
     }
- }
+   if(!is.null(mrbinResults)) invisible(mrbinResults)
 }
 
 #' A function for setting group members.
@@ -3672,15 +3945,8 @@ selectBrukerFolders<-function(keep=FALSE){#Select Bruker NMR spectral folders
 
 binMultiNMR<-function(){
  if(!is.null(mrbin.env$mrbin$parameters$NMRfolders)){
-    #mrbin.env$mrbin$bins<-NULL
     mrbin.env$mrbinTMP$binNames<-NULL
-    #mrbin.env$mrbinTMP$binTMP<-NULL
     #Open and bin all spectra
-    #mrbin.env$mrbinTMP$binsRaw<-NULL
-    #mrbin.env$mrbin$parameters$noise_level_Raw<-NULL
-    #mrbin.env$mrbinTMP$noise_level<-NULL
-    #mrbin.env$mrbinTMP$meanNumberOfPointsPerBin<-NULL
-    #listProgressTMP2<-(1:10)/10
     #Before binning first spectrum
     mrbin.env$mrbin$parameters$noise_level_Raw<-rep(NA,length(mrbin.env$mrbin$parameters$NMRfolders))
     mrbin.env$mrbin$parameters$noise_level<-matrix(rep(NA,length(mrbin.env$mrbin$parameters$NMRfolders)*
@@ -3711,7 +3977,6 @@ binMultiNMR<-function(){
       }
     }
     if(useParallel){
-      #try(parallel::clusterExport(cluster, "mrbin.env"),silent=TRUE)
       try(
         parallel::clusterExport(cluster, c(
           "readNMR","readBruker","referenceScaling","removeSolvent2",
@@ -3769,8 +4034,7 @@ binMultiNMR<-function(){
         useMeanIntensityForBins=mrbin.env$mrbin$parameters$useMeanIntensityForBins
         )
     }
-    #mrbin.env$mrbinTMP$
-    binsRaw<-matrix(rep(0,nrow(mrbin.env$mrbin$parameters$binRegions)*#length(mrbin.env$mrbinTMP$binTMP)*
+    binsRaw<-matrix(rep(0,nrow(mrbin.env$mrbin$parameters$binRegions)*
                                       length(mrbin.env$mrbin$parameters$NMRfolders)),
                                       nrow=length(mrbin.env$mrbin$parameters$NMRfolders))
     currentSpectrumNameTMP<-paste("TemporaryRowName_",1:length(mrbin.env$mrbin$parameters$NMRfolders),sep="")
@@ -3783,10 +4047,14 @@ binMultiNMR<-function(){
               binData[[ibinData]]$warningMessage)
       }
       binsRaw[ibinData,]<-binData[[ibinData]]$binTMP
-      mrbin.env$mrbinTMP$meanNumberOfPointsPerBin[ibinData,]<-binData[[ibinData]]$meanNumberOfPointsPerBin_TMP#mrbin.env$mrbinTMP$meanNumberOfPointsPerBin_TMP
-      mrbin.env$mrbin$parameters$noise_level_Raw[ibinData]<-binData[[ibinData]]$noise_level_Raw_TMP#noise level per sample before reference scaling
-      mrbin.env$mrbin$parameters$noise_level[ibinData,]<-binData[[ibinData]]$noise_level_TMP
-      mrbin.env$mrbin$parameters$noise_level_adjusted[ibinData]<-median(binData[[ibinData]]$noise_level_TMP)
+      mrbin.env$mrbinTMP$meanNumberOfPointsPerBin[ibinData,]<-
+        binData[[ibinData]]$meanNumberOfPointsPerBin_TMP
+      mrbin.env$mrbin$parameters$noise_level_Raw[ibinData]<-
+        binData[[ibinData]]$noise_level_Raw_TMP#noise/sample before reference scaling
+      mrbin.env$mrbin$parameters$noise_level[ibinData,]<-
+        binData[[ibinData]]$noise_level_TMP
+      mrbin.env$mrbin$parameters$noise_level_adjusted[ibinData]<-
+        median(binData[[ibinData]]$noise_level_TMP)
       currentSpectrumNameTMP[ibinData]<-binData[[ibinData]]$currentSpectrumName
     }
     i_currentSpectrumNameTMP<-2
@@ -3794,9 +4062,6 @@ binMultiNMR<-function(){
        currentSpectrumNameTMP[currentSpectrumNameTMP==(which(duplicated(currentSpectrumNameTMP))[1])]<-
             paste(currentSpectrumNameTMP[which(duplicated(currentSpectrumNameTMP))[1]],".",
             1:sum(currentSpectrumNameTMP==(which(duplicated(currentSpectrumNameTMP))[1])),sep="")
-       #currentSpectrumNameTMP[duplicated(currentSpectrumNameTMP)]<-paste(
-       #     currentSpectrumNameTMP[duplicated(currentSpectrumNameTMP)],".",
-       #     i_currentSpectrumNameTMP,sep="")
        i_currentSpectrumNameTMP<-i_currentSpectrumNameTMP+1
     }
     if(i_currentSpectrumNameTMP>2){
@@ -3811,10 +4076,12 @@ binMultiNMR<-function(){
     mrbin.env$mrbin$bins<-binsRaw
     #create object of type "mrbin"
     mrbinResults<-createmrbin()
-
-    mrbinResults<-editmrbin(mrbinObject=mrbinResults,functionName="mrbin::binMultiNMR",
+    mrbinResults<-editmrbin(mrbinObject=mrbinResults,
+      functionName="mrbin::binMultiNMR",
       versionNumber=as.character(utils::packageVersion("mrbin")),
-      bins=binsRaw, parameters=mrbin.env$mrbin$parameters,transformations=transformations,
+      bins=binsRaw, parameters=mrbin.env$mrbin$parameters,
+      metadata=mrbin.env$mrbin$metadata,
+      transformations=transformations,
       verbose=FALSE)
     invisible(mrbinResults)
  }
@@ -3831,7 +4098,6 @@ binMultiNMR<-function(){
 #' \donttest{ createBinRegions() }
 
 createBinRegions<-function(){
-   #createBinNumbers()
    if(mrbin.env$mrbin$parameters$binMethod=="Rectangular bins"){
        mrbin.env$mrbin$parameters$binRegions<-matrix(ncol=4,
                                         nrow=mrbin.env$mrbinTMP$nbins,
@@ -4462,7 +4728,7 @@ if(nrow(mrbin.env$mrbin$parameters$binRegions)>1){
 #' @param showHist A logical value, default is FALSE
 #' @param verbose Should a summary be printed?
 #' @param errorsAsWarnings If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.
-#' @return NMRdata An invisible matrix or mrbin object containing scaled NMR data.
+#' @return An invisible matrix or mrbin object containing scaled NMR data.
 #' @export
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
@@ -4603,6 +4869,101 @@ PQNScaling<-function(NMRdata,ignoreGlucose="Yes",dimension="1D",
  invisible(NMRdata)
 }
 
+#' A function for scaling to individual dilution factors.
+#'
+#' This function performs sample-wise scaling of binned data to correct for dilution
+#' through different sample volumes used, or for different sample weights. All bin
+#' values of one sample are multiplied by the corresponding dilution factor.
+#' @param mrbinResults An mrbin object
+#' @param errorsAsWarnings If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.
+#' @param verbose Should a summary be printed?
+#' @return An invisible mrbin object containing scaled NMR data.
+#' @export
+#' @examples
+#' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
+#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=FALSE,logTrafo="No",
+#'          NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
+#'                       system.file("extdata/2/10/pdata/10",package="mrbin"),
+#'                       system.file("extdata/3/10/pdata/10",package="mrbin"))),
+#'          metadata=list(dilutionFactors=c(.75,1,.5)))
+#' mrbinResults<-dilutionCorrection(mrbinResults)
+
+dilutionCorrection<-function(mrbinResults,verbose=TRUE,errorsAsWarnings=FALSE){
+    transformations="Dilution corrected"
+    if(transformations %in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been dilution corrected previously, this would corrupt the data.")
+      warning("Data has been dilution corrected previously, this would corrupt the data.")
+    }
+    if("Log transformed" %in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been log transformed previously, this would corrupt the data.")
+      warning("Data has been log transformed previously, this would corrupt the data.")
+    }
+    if("PQN scaled" %in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been PQN transformed previously, this would corrupt the data.")
+      warning("Data has been PQN transformed previously, this would corrupt the data.")
+    }
+    NMRdataTMP<-mrbinResults$bins
+ if(length(mrbinResults$metadata$dilutionFactors)==nrow(NMRdataTMP)){
+   for(i in 1:length(mrbinResults$metadata$dilutionFactors)){
+     NMRdataTMP[i,]<-NMRdataTMP[i,]*mrbinResults$metadata$dilutionFactors[i]
+   }
+   mrbinResults<-editmrbin(mrbinObject=mrbinResults,
+       functionName="mrbin::dilutionCorrection",
+       versionNumber=as.character(utils::packageVersion("mrbin")),
+       bins=NMRdataTMP,
+       transformations=transformations,verbose=verbose)
+ } else {
+    if(!errorsAsWarnings) stop("Data dimension does not match the number of provided dilution factors.")
+    warning("Data dimension does not match the number of provided dilution factors.")
+ }
+ invisible(mrbinResults)
+}
+
+#' A function for scaling to unit variance.
+#'
+#' This function performs scaling of binned data to unit variance so that each
+#' bin has variance 1 and mean 0. This is
+#' rarely necessary, but might be advantageous, e.g. in artificial neural networks.
+#' @param mrbinResults An mrbin object
+#' @param errorsAsWarnings If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.
+#' @param verbose Should a summary be printed?
+#' @return An invisible mrbin object containing scaled NMR data.
+#' @export
+#' @examples
+#' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
+#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=FALSE,logTrafo="No",
+#'          NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
+#'                       system.file("extdata/2/10/pdata/10",package="mrbin"),
+#'                       system.file("extdata/3/10/pdata/10",package="mrbin"))))
+#' mrbinResults<-unitVarianceScaling(mrbinResults)
+
+unitVarianceScaling<-function(mrbinResults,verbose=TRUE,errorsAsWarnings=FALSE){
+    transformations="Unit variance scaled"
+    if(transformations %in% mrbinResults$transformations){
+      if(!errorsAsWarnings) stop("Data has been unit variance scaled previously, this would corrupt the data.")
+      warning("Data has been unit variance scaled previously, this would corrupt the data.")
+    }
+    #if("Log transformed" %in% mrbinResults$transformations){
+    #  if(!errorsAsWarnings) stop("Data has been log transformed previously, this would corrupt the data.")
+    #  warning("Data has been log transformed previously, this would corrupt the data.")
+    #}
+    #if("PQN scaled" %in% mrbinResults$transformations){
+    #  if(!errorsAsWarnings) stop("Data has been PQN transformed previously, this would corrupt the data.")
+    #  warning("Data has been PQN transformed previously, this would corrupt the data.")
+    #}
+    NMRdataTMP<-mrbinResults$bins
+   for(i in 1:ncol(mrbinResults$bins)){
+     if(stats::var(NMRdataTMP[,i])==0) stop(paste("Variance was 0 for feature ",colnames(NMRdataTMP)[i],sep=""))
+     NMRdataTMP[,i]<-(NMRdataTMP[,i]-mean(NMRdataTMP[,i]))/stats::var(NMRdataTMP[,i])^.5
+   }
+   mrbinResults<-editmrbin(mrbinObject=mrbinResults,
+       functionName="mrbin::unitVarianceScaling",
+       versionNumber=as.character(utils::packageVersion("mrbin")),
+       bins=NMRdataTMP,
+       transformations=transformations,verbose=verbose)
+ invisible(mrbinResults)
+}
+
 
 #' A function for plotting PCA plots.
 #'
@@ -4636,7 +4997,9 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
     colorPalette<-c("black",grDevices::rainbow(length(levels(FactorsTMP))-1))
     if(annotate){
       mrbinResults<-annotatemrbin(mrbinResults)
-      colnames(mrbinResults$bins)<-mrbinResults$metadata$annotations
+      if(length(mrbinResults$metadata$annotations)==ncol(mrbinResults$bins)){
+        colnames(mrbinResults$bins)<-mrbinResults$metadata$annotations
+      }
     }
     if(nrow(mrbinResults$bins)>1){
       graphics::par(mgp=c(1,1,0))
@@ -5662,10 +6025,6 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
     if(!is.null(warningMessageTMP)){
       warningMessage<-paste(warningMessage,warningMessageTMP,sep="\n")
     }
-    #noiseDataScaled<-calculateNoise(NMRdata=NMRdata,
-    #           pointsPerBin=binData$pointsPerBin,dimension=dimension,
-    #           noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d
-    #           )#list
     invisible(list(binTMP=binData$binTMP,
        meanNumberOfPointsPerBin_TMP=binData$pointsPerBin,#mrbin.env$mrbinTMP$meanNumberOfPointsPerBin_TMP
        noise_level_Raw_TMP=noiseData$noise_level,#noise level per sample before reference scaling
@@ -5846,14 +6205,11 @@ readBruker<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
 
 referenceScaling<-function(NMRdata=NULL,reference1D=NULL,reference2D=NULL,dimension="1D"){
   dataProvided<-TRUE
-  #if(is.null(NMRdata)){
-  #  NMRdata<-mrbin.env$mrbinTMP$currentSpectrum
-  #  dataProvided<-FALSE
-  #}
   if(dimension=="1D"){
        scalingFactor<-mean(NMRdata[which(as.numeric(names(NMRdata))<=
                            reference1D[1]&as.numeric(names(NMRdata))>
-                                       reference1D[2])],na.rm=TRUE)*abs(reference1D[1]-reference1D[2])
+                                       reference1D[2])],na.rm=TRUE)*
+                                       abs(reference1D[1]-reference1D[2])
        scaledSpectrum<-NMRdata/scalingFactor
   }
   if(dimension=="2D"){
@@ -5869,9 +6225,6 @@ referenceScaling<-function(NMRdata=NULL,reference1D=NULL,reference2D=NULL,dimens
                              abs(reference2D[3]-reference2D[4])
        scaledSpectrum<-NMRdata/scalingFactor
   }
-  #if(!dataProvided){
-  #  mrbin.env$mrbinTMP$currentSpectrum<-scaledSpectrum
-  #}
   invisible(list(scaledSpectrum=scaledSpectrum,scalingFactor=scalingFactor))
 }
 
@@ -5987,9 +6340,11 @@ createmrbin<-function(){
                trimZeros="Yes",
                noiseRemoval="Yes",
                cropHSQC="Yes",
-               PQNScaling="Yes",
-               fixNegatives="Yes",
+               dilutionCorrection="No",
+               PQNScaling="No",
+               fixNegatives="No",
                logTrafo="No",
+               unitVarianceScaling="No",
                PCA="Yes",
                reference1D=c(.03,-0.03),
                reference2D=c(.04,-0.04,-2,2),
@@ -6055,16 +6410,10 @@ createmrbin<-function(){
                solvent="",#e.g. H2O, D2O, CDCl3, etc.
                pH="",#e.g. 7.4
                dilutionFactors=NULL,#vector of dilution correction values
-               metaboliteIdentities=data.frame(structure(matrix(c(
-                  .05,-.05,-3,3,
-                  4.94,4.66,-10,200
-                ),ncol=4,byrow=TRUE),dimnames=list(NULL,c('left','right','top','bottom'))),metaboliteName=c(
-                "Reference",
-                "Water"
-                ),stringsAsFactors=FALSE),#Potential metabolite identities and ppm values. data.frame with metaboliteName, left, right, top, bottom
                annotations="",#Vector of features with potential metabolite identities, corresponds to columns in $bins
                factors=NULL,
-               metaData=NULL#for storing dataframe of metadata
+               metaData=NULL,#for storing matrix of metadata
+               metaboliteIdentities=matrix(nrow=0,ncol=4,dimnames=list(NULL,c('left','right','top','bottom')))#Potential metabolite identities and ppm values. data.frame with metaboliteName, left, right, top, bottom
     ),
     transformations=NULL,#data transformation or scaling is documented here for later review, including: reference scaling, log trafo, PQN, atnv, etc.
     changeLog=NULL,#changes to data, parameters, or metadata are documented here, including: time, function name, version, names of changed parameters
@@ -6226,8 +6575,9 @@ checkmrbin<-function(mrbinObject,verbose=TRUE,errorsAsWarnings=NULL){
           namesTMP<-NULL
           for(j in names(mrbinObject$changeValues[[i]])){
            if(j %in% names(mrbinObject$changeValues[[i-1]])){
-             if(!identical(round(mrbinObject$changeValues[[i]][[j]][2],2),
-                 round(mrbinObject$changeValues[[i-1]][[j]][1]*cos(i)/cos(i-1),2))
+             if(!identical(#round values to avoid numeric instabilities
+                 signif(mrbinObject$changeValues[[i]][[j]][2],6),
+                 signif(mrbinObject$changeValues[[i-1]][[j]][1]*cos(i)/cos(i-1),6))
                  ){
                  namesTMP<-c(namesTMP,j)
              }
@@ -6308,9 +6658,12 @@ editmetabolitesmrbin<-function(mrbinObject,borders,metabolitenames,add=TRUE){ #D
   if(!add){
     metaboliteIdentities<-NULL
   }
-  mrbinObject<-editmrbin(mrbinObject,metadata=list(metaboliteIdentities=rbind(metaboliteIdentities,
-    data.frame(borders,metaboliteName=metabolitenames,stringsAsFactors=FALSE))),
-    functionName="mrbin::editmetabolitesmrbin",versionNumber=as.character(utils::packageVersion("mrbin")),
+  rownames(borders)<-metabolitenames
+  metaboliteIdentities=rbind(metaboliteIdentities,borders)
+  mrbinObject<-editmrbin(mrbinObject,metadata=list(
+    metaboliteIdentities=metaboliteIdentities),
+    functionName="mrbin::editmetabolitesmrbin",
+    versionNumber=as.character(utils::packageVersion("mrbin")),
     verbose=FALSE)
   mrbinObject<-annotatemrbin(mrbinObject)
   invisible(mrbinObject)
@@ -6330,86 +6683,89 @@ editmetabolitesmrbin<-function(mrbinObject,borders,metabolitenames,add=TRUE){ #D
 #'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
 #'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
 #'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
-#'                               system.file("extdata/3/10/pdata/10",package="mrbin"))
-#'                    ))
-#'  mrbinObject<-editmetabolitesmrbin(mrbinObject,borders=matrix(c(
-#'      1.346,1.324,21,23,
-#'      3.052,3.043,30.5,33.5,
-#'      4.066,4.059,57,59.5
-#'    ),ncol=4,byrow=TRUE),metabolitenames=c(
-#'    "Lactate",
-#'    "Creatinine",
-#'    "Creatinine"
-#'    ))
+#'                               system.file("extdata/3/10/pdata/10",package="mrbin"))),
+#'                    metadata=list(metaboliteIdentities=matrix(c(
+#'                    1.346,1.324,21,23,
+#'                    3.052,3.043,30.5,33.5,
+#'                    4.066,4.059,57,59.5
+#'                    ),ncol=4,byrow=TRUE,dimnames=list(
+#'                    c("Lactate","Creatinine","Creatinine"),NULL))))
 #' mrbinObject<-annotatemrbin(mrbinObject)
-#' mrbinObject$metadata$annotations
+#' mrbinObject$metadata$annotations[125:135]
 #' plotPCA(mrbinObject,loadings=TRUE)
 
 annotatemrbin<-function(mrbinObject){ #Define metabolite names
-  annotations<-rep("",nrow(mrbinObject$parameters$binRegions))
-  names(annotations)<-colnames(mrbinObject$bins)
-  if(mrbinObject$parameters$dimension=="1D"){
-    if(!is.null(mrbinObject$metadata$metaboliteIdentities)){
-      for(i in 1:nrow(mrbinObject$metadata$metaboliteIdentities)){
-        testTMP<-(mrbinObject$parameters$binRegions[,"left"]<=mrbinObject$metadata$metaboliteIdentities[i,"left"]&
-                  mrbinObject$parameters$binRegions[,"left"]>=mrbinObject$metadata$metaboliteIdentities[i,"right"])|
-                 (mrbinObject$parameters$binRegions[,"right"]<=mrbinObject$metadata$metaboliteIdentities[i,"left"]&
-                  mrbinObject$parameters$binRegions[,"right"]>=mrbinObject$metadata$metaboliteIdentities[i,"right"])|
-                 (mrbinObject$parameters$binRegions[,"left"]>=mrbinObject$metadata$metaboliteIdentities[i,"left"]&
-                  mrbinObject$parameters$binRegions[,"right"]<=mrbinObject$metadata$metaboliteIdentities[i,"right"])
-        if(sum(testTMP)>0){
-         metNameTMP<-mrbinObject$metadata$metaboliteIdentities[i,"metaboliteName"]
-         for(j in which(testTMP)){
-          #annotations[testTMP]<-paste(annotations[testTMP],
-          #  mrbinObject$metadata$metaboliteIdentities[i,"metaboliteName"],sep=", ")
-          if(!(identical(annotations[j],metNameTMP)|
-             substr(annotations[j],1,nchar(metNameTMP)+2)==paste(metNameTMP,", ",sep="")|
-             substr(annotations[j],max(1,nchar(annotations[j])-nchar(metNameTMP)-2),nchar(annotations[j]))==
-             paste(", ",metNameTMP,sep="")|grepl(paste(", ",metNameTMP,", ",sep=""),annotations[j]))
-             ){
-             annotations[j]<-paste(annotations[j],metNameTMP,sep=", ")
+  if(nrow(mrbinObject$metadata$metaboliteIdentities)>0){
+    annotations<-rep("",nrow(mrbinObject$parameters$binRegions))
+    names(annotations)<-colnames(mrbinObject$bins)
+    if(mrbinObject$parameters$dimension=="1D"){
+      #if(nrow(mrbinObject$metadata$metaboliteIdentities)>0){
+        for(i in 1:nrow(mrbinObject$metadata$metaboliteIdentities)){
+          testTMP<-(mrbinObject$parameters$binRegions[,1]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
+                    mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
+                   (mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
+                    mrbinObject$parameters$binRegions[,2]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
+                   (mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,1]&
+                    mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,2])
+          if(sum(testTMP)>0){
+           metNameTMP<-rownames(mrbinObject$metadata$metaboliteIdentities)[i]
+           for(j in which(testTMP)){
+            if(annotations[j]==""){
+              annotations[j]<-metNameTMP
+            } else {
+              if(!(annotations[j]==metNameTMP|
+                 substr(annotations[j],1,nchar(metNameTMP)+2)==paste(metNameTMP,", ",sep="")|
+                 substr(annotations[j],max(1,nchar(annotations[j])-nchar(metNameTMP)-2),nchar(annotations[j]))==
+                 paste(", ",metNameTMP,sep="")|
+                 grepl(paste(", ",metNameTMP,", ",sep=""),annotations[j]))
+                 ){
+                 annotations[j]<-paste(annotations[j],metNameTMP,sep=", ")
+              }
+            }
+           }
           }
-         }
         }
-      }
+      #}
     }
-  }
-  if(mrbinObject$parameters$dimension=="2D"){
-    if(!is.null(mrbinObject$metadata$metaboliteIdentities)){
-      for(i in 1:nrow(mrbinObject$metadata$metaboliteIdentities)){
-        testTMP<-((mrbinObject$parameters$binRegions[,"left"]<=mrbinObject$metadata$metaboliteIdentities[i,"left"]&
-                  mrbinObject$parameters$binRegions[,"left"]>=mrbinObject$metadata$metaboliteIdentities[i,"right"])|
-                 (mrbinObject$parameters$binRegions[,"right"]<=mrbinObject$metadata$metaboliteIdentities[i,"left"]&
-                  mrbinObject$parameters$binRegions[,"right"]>=mrbinObject$metadata$metaboliteIdentities[i,"right"])|
-                 (mrbinObject$parameters$binRegions[,"left"]>=mrbinObject$metadata$metaboliteIdentities[i,"left"]&
-                  mrbinObject$parameters$binRegions[,"right"]<=mrbinObject$metadata$metaboliteIdentities[i,"right"]))&#2D
-                 ((mrbinObject$parameters$binRegions[,"bottom"]<=mrbinObject$metadata$metaboliteIdentities[i,"bottom"]&
-                  mrbinObject$parameters$binRegions[,"bottom"]>=mrbinObject$metadata$metaboliteIdentities[i,"top"])|
-                 (mrbinObject$parameters$binRegions[,"top"]<=mrbinObject$metadata$metaboliteIdentities[i,"bottom"]&
-                  mrbinObject$parameters$binRegions[,"top"]>=mrbinObject$metadata$metaboliteIdentities[i,"top"])|
-                 (mrbinObject$parameters$binRegions[,"bottom"]>=mrbinObject$metadata$metaboliteIdentities[i,"bottom"]&
-                  mrbinObject$parameters$binRegions[,"top"]<=mrbinObject$metadata$metaboliteIdentities[i,"top"]))
-        if(sum(testTMP)>0){
-         metNameTMP<-mrbinObject$metadata$metaboliteIdentities[i,"metaboliteName"]
-         for(j in which(testTMP)){
-          #annotations[testTMP]<-paste(annotations[testTMP],
-          #  mrbinObject$metadata$metaboliteIdentities[i,"metaboliteName"],sep=", ")
-          if(!(identical(annotations[j],metNameTMP)|
-             substr(annotations[j],1,nchar(metNameTMP)+2)==paste(metNameTMP,", ",sep="")|
-             substr(annotations[j],max(1,nchar(annotations[j])-nchar(metNameTMP)-2),nchar(annotations[j]))==
-             paste(", ",metNameTMP,sep="")|grepl(paste(", ",metNameTMP,", ",sep=""),annotations[j]))
-             ){
-             annotations[j]<-paste(annotations[j],metNameTMP,sep=", ")
+    if(mrbinObject$parameters$dimension=="2D"){
+      #if(nrow(mrbinObject$metadata$metaboliteIdentities)>0){
+        for(i in 1:nrow(mrbinObject$metadata$metaboliteIdentities)){
+          testTMP<-((mrbinObject$parameters$binRegions[,1]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
+                    mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
+                   (mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
+                    mrbinObject$parameters$binRegions[,2]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
+                   (mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,1]&
+                    mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,2]))&#2D
+                   ((mrbinObject$parameters$binRegions[,4]<=mrbinObject$metadata$metaboliteIdentities[i,4]&
+                    mrbinObject$parameters$binRegions[,4]>=mrbinObject$metadata$metaboliteIdentities[i,3])|
+                   (mrbinObject$parameters$binRegions[,3]<=mrbinObject$metadata$metaboliteIdentities[i,4]&
+                    mrbinObject$parameters$binRegions[,3]>=mrbinObject$metadata$metaboliteIdentities[i,3])|
+                   (mrbinObject$parameters$binRegions[,4]>=mrbinObject$metadata$metaboliteIdentities[i,4]&
+                    mrbinObject$parameters$binRegions[,3]<=mrbinObject$metadata$metaboliteIdentities[i,3]))
+          if(sum(testTMP)>0){
+           metNameTMP<-rownames(mrbinObject$metadata$metaboliteIdentities)[i]
+           for(j in which(testTMP)){
+            if(annotations[j]==""){
+              annotations[j]<-metNameTMP
+            } else {
+              if(!(annotations[j]==metNameTMP|
+                 substr(annotations[j],1,nchar(metNameTMP)+2)==paste(metNameTMP,", ",sep="")|
+                 substr(annotations[j],max(1,nchar(annotations[j])-nchar(metNameTMP)-2),nchar(annotations[j]))==
+                 paste(", ",metNameTMP,sep="")|grepl(paste(", ",metNameTMP,", ",sep=""),annotations[j]))
+                 ){
+                 annotations[j]<-paste(annotations[j],metNameTMP,sep=", ")
+              }
+            }
+           }
           }
-         }
         }
-      }
+      #}
     }
+    if(sum(annotations=="")>0) annotations[annotations==""]<-colnames(mrbinObject$bins)[annotations==""]
+    mrbinObject<-editmrbin(mrbinObject,functionName="mrbin::annotatemrbin",
+             versionNumber=as.character(utils::packageVersion("mrbin")),
+      metadata=list(annotations=trimws(annotations)),verbose=FALSE)
   }
-  annotations[annotations==""]<-colnames(mrbinObject$bins)[annotations==""]
-  mrbinObject<-editmrbin(mrbinObject,functionName="mrbin::annotatemrbin",
-           versionNumber=as.character(utils::packageVersion("mrbin")),
-    metadata=list(annotations=trimws(annotations)),verbose=FALSE)
   invisible(mrbinObject)
 }
 
@@ -6485,15 +6841,16 @@ editmrbin<-function(mrbinObject,functionName="mrbin::editmrbin",
   } else {
     changeDetails<-"No changes."
   }
-  mrbinObject<-timeStampMrbin(mrbinObject,
+  mrbinObject2<-timeStampMrbin(mrbinObject,
     functionName=functionName,
     versionNumber=versionNumber,
     changeDetails=changeDetails,
     steps=1,
     comment=comment
   )
-  checkmrbin(mrbinObject,verbose=verbose)
-  invisible(mrbinObject)
+  mrbin.env$mrbinObject2<-mrbinObject2
+  checkmrbin(mrbinObject2,verbose=verbose)
+  invisible(mrbinObject2)
 }
 
 
