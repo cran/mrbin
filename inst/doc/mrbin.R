@@ -344,7 +344,7 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 ###################################################
 ### code chunk number 38: mrbin.Rnw:648-651 (eval = FALSE)
 ###################################################
-## readBruker(dimension="1D",
+## addToPlot(dimension="1D",
 ##   folder="C:/Bruker/TopSpin3.6.1/data/guest/nmr/sample_1/12/pdata/10")
 ## plotNMR()
 
@@ -352,7 +352,7 @@ plotPCA(mrbinResults2D,loadings=TRUE,annotate=TRUE)
 ###################################################
 ### code chunk number 39: mrbin.Rnw:657-660 (eval = FALSE)
 ###################################################
-## readBruker(dimension="2D",
+## addToPlot(dimension="2D",
 ##   folder=system.file("extdata/1/12/pdata/10",package="mrbin"))
 ## plotNMR()
 

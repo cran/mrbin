@@ -21,7 +21,7 @@
 
 \title{mrbin}
 \author{Matthias S. Klein}
-\date{Version 1.7.1}
+\date{Version 1.7.2}
 \maketitle
 \tableofcontents
 \pagebreak
@@ -646,7 +646,7 @@ The system.file command loads example data from the mrbin package. To use your
 own spectra, please adjust as follows:\\
 
 <<eval=FALSE>>=
-readBruker(dimension="1D",
+addToPlot(dimension="1D",
   folder="C:/Bruker/TopSpin3.6.1/data/guest/nmr/sample_1/12/pdata/10")
 plotNMR()
 @
@@ -655,7 +655,7 @@ plotNMR()
 For 2D data, this code reads as follows:
 
 <<eval=FALSE>>=
-readBruker(dimension="2D",
+addToPlot(dimension="2D",
   folder=system.file("extdata/1/12/pdata/10",package="mrbin"))
 plotNMR()
 @

@@ -18,7 +18,8 @@ plotNMR(
   restrictToRange = FALSE,
   currentSpectrumOriginal = NULL,
   perspective = FALSE,
-  noise = NULL
+  noise = NULL,
+  dimension = NULL
 )
 }
 \arguments{
@@ -49,6 +50,8 @@ plotNMR(
 \item{perspective}{If TRUE, a perspective plot will be displayed for 2D data instead of the regular topographic view}
 
 \item{noise}{If provided, a line or plane at this level will be added to the plot to indicate noise level}
+
+\item{dimension}{"1D' or "2D". If not provided, this will be deduced from the data}
 }
 \value{
 {None}

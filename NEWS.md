@@ -1,5 +1,14 @@
 # mrbin News
 
+## Version 1.7.2
+
+* In setNoiseLevels() there is now a preview of the number of bins left for noise thresholds between 0.05 and 1
+* Renaming of duplicated spectrum names was improved, this also fixed a rare bug that could cause mrbin to get stuck while binning
+* Previews of all spectra can now be reviewed while running mrbin() to identify quality issues
+* Speed improvements in 2D plots by reducing the number of displayed data points
+* plotResults() will now show a preview of spectral region evens if no spectral data has been loaded before. This is useful when using mrbin objects that have been previously created
+* Small improvements to documentations and vignette
+
 ## Version 1.7.1
 
 * Bug fix: annotatemrbin() sometimes added extra commas in metabolite annotations, this has been fixed

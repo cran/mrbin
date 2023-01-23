@@ -18,7 +18,7 @@ spectrum plot.
 }
 \examples{
 resetEnv()
-readBruker(folder=system.file("extdata/1/12/pdata/10",package="mrbin"),dimension="2D")
+addToPlot(folder=system.file("extdata/1/12/pdata/10",package="mrbin"),dimension="2D")
 plotNMR()
 contPlus()
 }

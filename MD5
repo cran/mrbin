@@ -1,13 +1,13 @@
-8405840df9ef013676132ecffab573a7 *DESCRIPTION
+14eddcf4cca6063eff7e9c9680320fd3 *DESCRIPTION
 36161119b6c291edd90b8ec7a11edbcb *NAMESPACE
-80f5d6c77335df6e900b1e1d84768c4f *NEWS.md
-116c4e3ac55d36de15d77a0279ad9e26 *R/mrbin.R
+35f8dcb7c5d755dc9b3ec7c623df8715 *NEWS.md
+9eec5c1918ac094ea406c7b6bcf65304 *R/mrbin.R
 84ee8c601e362e45563d3a4742f15a81 *README.md
 03926f300ad692c7ebb7b51c977d67e6 *build/vignette.rds
 d7ee8641be175f4b08ac536579976112 *inst/CITATION
-23f28c76a95512e32160cb664ebcb0b3 *inst/doc/mrbin.R
-80f70c7f5b976126b136fcb208a16c40 *inst/doc/mrbin.Rnw
-ceffec1894c3c6100fcea8e0ecd5ee55 *inst/doc/mrbin.pdf
+8d0a7b942d1ceff9c2306b6875f630f9 *inst/doc/mrbin.R
+329153d3413499e0d1e8177f46f0fff9 *inst/doc/mrbin.Rnw
+9f638d44955aed215d11788102d68dc4 *inst/doc/mrbin.pdf
 7b02c0e5793e4043060634d0ae0a151d *inst/extdata/1/10/pdata/10/1r
 0a67540dea70f95671702dc84c0d4896 *inst/extdata/1/10/pdata/10/proc
 b3c867d628a161ddac3ad3093d8a6dd6 *inst/extdata/1/10/pdata/10/procs
@@ -45,7 +45,7 @@ fb0523d1cf88b8fdc450de726bf57f2a *inst/extdata/3/12/pdata/10/procs
 984db11b6d8f662cb7afa3f7d44e4f20 *man/atnv.Rd
 a224cfff0c654ff30a9665f0ae2c2204 *man/checkmrbin.Rd
 479f5c1468b2a030608e54579450281e *man/contMin.Rd
-f8f8d37beccc8c82a1419ca2908a6427 *man/contPlus.Rd
+321942736dc268b9e50bade2c78854a5 *man/contPlus.Rd
 f569a286907182df8acbebaca4ca2a57 *man/createmrbin.Rd
 6448585a8459247182dbf94227f6a572 *man/cropNMR.Rd
 d8877cf8cfa648069aa6f620ba4bf662 *man/dilutionCorrection.Rd
@@ -63,7 +63,7 @@ dafb30b7606f7cb9ee58d1352d009937 *man/intMin.Rd
 4b93ffc4a86b26d8cd16f51c67c0facf *man/mrbinrun.Rd
 3eb109c2696e390be48719e98752c62a *man/mrplot.Rd
 f2aaadb012d0c91df124cc9a8c2093fc *man/plotMultiNMR.Rd
-c1c90848bca7d4a6dcc864391a1f2afd *man/plotNMR.Rd
+67dd0334b0f01f8667581e5fae0fbc3a *man/plotNMR.Rd
 7f1b692120d4399c311f258c5864cf76 *man/plotPCA.Rd
 51add46b3f8b6f08e46b859318ad1cb7 *man/plotResults.Rd
 25f3539250fef05617dd7c3c6e9fe165 *man/predictWrapper.Rd
@@ -88,4 +88,4 @@ a96d0fc46551620d57207b5e1c70ec83 *man/up.Rd
 e3fd9a30c01b28f2c94ac2dc4475c162 *man/zoom.Rd
 d1923d7f9e4123e992b9f5968d568018 *man/zoomIn.Rd
 8936e336d365ffcd436771be52334a30 *man/zoomOut.Rd
-80f70c7f5b976126b136fcb208a16c40 *vignettes/mrbin.Rnw
+329153d3413499e0d1e8177f46f0fff9 *vignettes/mrbin.Rnw
