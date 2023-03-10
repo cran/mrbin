@@ -4,7 +4,7 @@
 \alias{plotResults}
 \title{A function for plotting quality indicators, including PCA plots.}
 \usage{
-plotResults(mrbinResults, defineGroups = TRUE, process = TRUE)
+plotResults(mrbinResults, defineGroups = TRUE, process = TRUE, silent = FALSE)
 }
 \arguments{
 \item{mrbinResults}{An mrbin object}
@@ -12,6 +12,8 @@ plotResults(mrbinResults, defineGroups = TRUE, process = TRUE)
 \item{defineGroups}{Should group membership be highlighted in PCA?}
 
 \item{process}{If set to FALSE, the file name will be extended by "Raw" to indicate that data has not been processed yet}
+
+\item{silent}{If set to TRUE, plots will be saved but not shown for the binning step for speed purposes}
 }
 \value{
 {None}

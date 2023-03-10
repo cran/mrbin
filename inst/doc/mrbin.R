@@ -1,5 +1,4 @@
 ### R code from vignette source 'mrbin.Rnw'
-### Encoding: ISO8859-1
 
 ###################################################
 ### code chunk number 1: mrbin.Rnw:53-54 (eval = FALSE)

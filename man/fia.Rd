@@ -11,11 +11,12 @@ fia(
   nSeed = 6,
   numberOfSamples = 100,
   maxFeatures = 10000,
-  innerLoop = 100,
+  innerLoop = 300,
   verbose = TRUE,
   maxNumberAllTests = 5,
   firstLevel = 1,
   saveMemory = FALSE,
+  kerasClearMemory = 0,
   functionNamePredict = "predict",
   parameterNameObject = "object",
   parameterNameData = "x",
@@ -43,7 +44,9 @@ fia(
 
 \item{firstLevel}{Numeric value of first level or group. Usually 1 but for glm such as in the example this needs to be 0.}
 
-\item{saveMemory}{Save memory by performing predictions one by one, which will be slower.}
+\item{saveMemory}{Save memory by performing only two predictions per step, which will be much slower. If you are using keras, use parameter kerasClearMemory=2 instead to free more memory and be a lot faster. FALSE to turn off.}
+
+\item{kerasClearMemory}{Save memory by clearing model from memory and reloading the model between chunks of predictions. Will only work when using package keras. 0=off, 1=medium (reload between repeat with different seeds), 2=maximum memory savings (reload after each run for a single sample). This will write a model file to the working directory.}
 
 \item{functionNamePredict}{The name of the prediction function. This only needs to be changed if the prediction function is not called predict}
 

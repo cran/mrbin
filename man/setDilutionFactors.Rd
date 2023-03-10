@@ -7,7 +7,8 @@
 setDilutionFactors(
   mrbinObject,
   dilutionFactors = NULL,
-  errorsAsWarnings = FALSE
+  errorsAsWarnings = FALSE,
+  alwaysShowOptionKeep = FALSE
 )
 }
 \arguments{
@@ -16,6 +17,8 @@ setDilutionFactors(
 \item{dilutionFactors}{An optional vector of dilution factors. If provided, no user input is requested}
 
 \item{errorsAsWarnings}{If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.}
+
+\item{alwaysShowOptionKeep}{If TRUE, you will be asked to keep current values even if they do not match the current dataset.}
 }
 \value{
 An invisible mrbin object

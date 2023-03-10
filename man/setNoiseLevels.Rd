@@ -4,7 +4,12 @@
 \alias{setNoiseLevels}
 \title{A function for setting and plotting noise levels.}
 \usage{
-setNoiseLevels(mrbinObject, plotOnly = FALSE, showSpectrumPreview = NULL)
+setNoiseLevels(
+  mrbinObject,
+  plotOnly = FALSE,
+  showSpectrumPreview = NULL,
+  silent = FALSE
+)
 }
 \arguments{
 \item{mrbinObject}{An mrbin object}
@@ -12,6 +17,8 @@ setNoiseLevels(mrbinObject, plotOnly = FALSE, showSpectrumPreview = NULL)
 \item{plotOnly}{Should only noise plots be generated (TRUE), or should noise levels be adjusted interactively (FALSE)}
 
 \item{showSpectrumPreview}{Should plots be shown? If not provided, this value will be taken from the mrbin object parameters}
+
+\item{silent}{If set to TRUE, plots will not be shown but might still be saved}
 }
 \value{
 An invisible mrbin object

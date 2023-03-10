@@ -38,7 +38,7 @@ NULL
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage("mrbin 1.7.2\nFor instructions and examples, please type: vignette('mrbin')")
+    packageStartupMessage("mrbin 1.7.3\nFor instructions and examples, please type: vignette('mrbin')")
 }
 
 
@@ -122,7 +122,8 @@ predictWrapper<-function(model,dataSet,functionNamePredict="predict",firstLevel=
 #' @param verbose A logical vector to turn messages on or off
 #' @param maxNumberAllTests Combinations of features of this length or shorter will not be split in half to create two children, but into multiple children with one feature left out each. This is done make sure no combination is missed.
 #' @param firstLevel Numeric value of first level or group. Usually 1 but for glm such as in the example this needs to be 0.
-#' @param saveMemory Save memory by performing predictions one by one, which will be slower.
+#' @param saveMemory Save memory by performing only two predictions per step, which will be much slower. If you are using keras, use parameter kerasClearMemory=2 instead to free more memory and be a lot faster. FALSE to turn off.
+#' @param kerasClearMemory Save memory by clearing model from memory and reloading the model between chunks of predictions. Will only work when using package keras. 0=off, 1=medium (reload between repeat with different seeds), 2=maximum memory savings (reload after each run for a single sample). This will write a model file to the working directory.
 #' @param functionNamePredict The name of the prediction function. This only needs to be changed if the prediction function is not called predict
 #' @param parameterNameObject The name of the parameter for passing the model to the prediction function
 #' @param parameterNameData The name of the parameter for passing the data to the prediction function
@@ -149,9 +150,9 @@ predictWrapper<-function(model,dataSet,functionNamePredict="predict",firstLevel=
 #'    firstLevel=0,type="response")
 #'  fiaresults$scores
 fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
-  maxFeatures=10000,innerLoop=100,verbose=TRUE,maxNumberAllTests=5,firstLevel=1,
-  saveMemory=FALSE,functionNamePredict="predict",parameterNameObject="object",
-  parameterNameData="x",...){
+  maxFeatures=10000,innerLoop=300,verbose=TRUE,maxNumberAllTests=5,firstLevel=1,
+  saveMemory=FALSE,kerasClearMemory=0,functionNamePredict="predict",
+  parameterNameObject="object",parameterNameData="x",...){
   digitDict<-c(1:9,0,letters,LETTERS)#replace number>9 with single digit characters
   seedList=(1:nSeed-1)*100
   if(is.factor(factors)){
@@ -164,13 +165,17 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
     dataSet<-as.matrix(dataSet)
     dataFrameFlag<-TRUE
   }
+  if(kerasClearMemory>0){
+    keras::save_model_tf(object=model,filepath="fiaTMP",overwrite = TRUE,
+      include_optimizer = TRUE,signatures = NULL, options = NULL)
+  }
   factorsDict<-1:nlevels(factors)-1#-1 is necessary for tensorflow, otherwise usually not
   names(factorsDict)<-levels(factors)
   lVector<-apply(dataSet,2,quantile,.01)
   hVector<-apply(dataSet,2,quantile,.99)
   predTMP<-predictWrapper(model=model,dataSet=dataSet,firstLevel=firstLevel,
     functionNamePredict=functionNamePredict,parameterNameObject=parameterNameObject,
-    parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag
+    parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,verbose=0
     ,...
     )
   predAll<-names(factorsDict)[predTMP]
@@ -189,17 +194,11 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   sampleVector<-as.vector(sampleList2)
   names(sampleVector)<-as.vector(sampleList)
   sampleVector<-sampleVector[!is.na(sampleVector)]
-  samplesTested<-vector("list",length(sampleVector))
-  names(samplesTested) <- names(sampleVector)
-  for(i in 1:length(samplesTested)){
-    samplesTested[[i]]<-list()
+  samplesPositive<-vector("list",length(sampleVector))
+  names(samplesPositive) <- names(sampleVector)
+  for(i in 1:length(samplesPositive)){
+    samplesPositive[[i]]<-list()
   }
-  samplesPositive<-samplesTested
-  samplesTestedMultiple<-samplesPositive#save pairs, triples here
-  samplesTestedAdditional<-samplesPositive#anything left in the list after all iterations to be saved here
-  positiveFeatures<-NULL
-  fiaListPerSample<-vector("list",length(sampleVector))
-  names(fiaListPerSample) <- names(sampleVector)
   #for each sample, save single important features
   if(verbose){
     message("Testing single features\n0% ",appendLF = FALSE)
@@ -207,6 +206,13 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   }
   stepSizePercent<-20
   steps<-1
+  #save memory by doing this for each starting seed:
+  #create matrix prefilled with Nfeatures (first digit of FIA). save here length 
+  #of each saved pair, if lower than previous value
+  fiaMatrixNew<-matrix(ncol(dataSet),ncol=ncol(dataSet),nrow=length(sampleVector))#nrow=nlevels(factors))
+  colnames(fiaMatrixNew)<-colnames(dataSet)
+  rownames(fiaMatrixNew)<-names(sampleVector)#levels(factors)
+  
   irepSample<-1
   for (irepSample in 1:length(sampleVector)){ #loop over all selected samples
     repSample<-names(sampleVector)[irepSample]
@@ -218,26 +224,16 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
     predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
       functionNamePredict=functionNamePredict,parameterNameObject=parameterNameObject,
       parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag
-      ,...
+      ,verbose=0,...
       )
     pred<-names(factorsDict)[predTMP]
     iSingle<-1
     for(iSingle in 1:ncol(dataSet)){
       if(sum(!pred[c(iSingle,iSingle+ncol(dataSet))]==
-        sampleVector[repSample])>0){#if low levels were still correct, check high  levels
+        sampleVector[repSample])>0){#check low and high levels
           samplesPositive[[repSample]]<-c(
              samplesPositive[[repSample]],colnames(dataSet)[iSingle])
-          positiveFeatures<-unique(c(positiveFeatures,colnames(dataSet)[iSingle]))
-      }
-    }
-    if(length(samplesPositive[[repSample]])>0){
-      for(ifiaList in 1:length(samplesPositive[[repSample]])){
-        if(!samplesPositive[[repSample]][ifiaList] %in%
-          fiaListPerSample[[repSample]]){
-          fiaListPerSample[[repSample]]<-c(
-            fiaListPerSample[[repSample]],
-            samplesPositive[[repSample]][ifiaList])
-        }
+		  fiaMatrixNew[repSample,iSingle]<-1
       }
     }
     if(irepSample/length(sampleVector)>=steps*stepSizePercent/100){
@@ -249,7 +245,6 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
       steps<-steps+1
     }
   }
-  samplesTestedSingle<-samplesPositive
   if(verbose){
      message("Testing combinations of features\n0% ",appendLF = FALSE)
      flush.console()
@@ -257,8 +252,6 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   stepSizePercent<-20
   steps<-1
   steps2<-1
-  iSeed2<-1#for debugging
-
   for(iSeed2 in 1:length(seedList)){ #repeat for different starting seeds
     iSeed<-seedList[iSeed2]
     fiaListL<-list()
@@ -273,12 +266,10 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
       }
       #remove positive single hits
       positiveSingleTMP<-setdiff(colnames(dataSet),
-          samplesTestedSingle[[repSample]])
+          samplesPositive[[repSample]])
       if(length(positiveSingleTMP)>0) fiaResults[[i2]][[i3]]<-positiveSingleTMP
-      #iInnerLoop<-1
       for(iInnerLoop in 1:innerLoop){
         seedInnerLoop<-(iInnerLoop-1)*1000
-        #i2<-1
         if(length(fiaResults)>0){
           for(i2 in 1:length(fiaResults)){
            if(length(fiaResults[[i2]])>0){
@@ -297,8 +288,11 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
                  predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
                    functionNamePredict=functionNamePredict,
                    parameterNameObject=parameterNameObject,
-                   parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,...)
+                   parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,verbose=0
+				   ,...
+				   )
                  pred2<-names(factorsDict)[predTMP]
+				 rm(predTMP)
                }
              }
              #i3b<-1
@@ -314,8 +308,11 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
                    predTMP<-predictWrapper(model=model,dataSet=dataTMP,firstLevel=firstLevel,
                      functionNamePredict=functionNamePredict,
                      parameterNameObject=parameterNameObject,
-                     parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag,...)
+                     parameterNameData=parameterNameData,dataFrameFlag=dataFrameFlag
+					 ,verbose=0,...
+					 )
                    pred<-names(factorsDict)[predTMP]
+				   rm(predTMP)
                 }
               } else {
                 pred<-pred2[c(i3b,length(i3TMP)+i3b)]
@@ -327,14 +324,13 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
                  #in this case the parent will be saved to the list and then deleted
                  if(which(digitDict==substr(i3,nchar(i3)-1,nchar(i3)-1))==
                    (length(fiaResults[[i2]][[i3]])+1)){#this indicates that all children have been tested
-                   if(i2>1){#save parent to list
+                   if(i2>1){#save parent
                      if(!is.null(fiaResults[[i2-1]][[parentNameTMP]])){
-                       if(!list(fiaResults[[i2-1]][[parentNameTMP]])%in%
-                         samplesTestedMultiple[[repSample]]){
-                           samplesTestedMultiple[[repSample]]<-c(
-                             samplesTestedMultiple[[repSample]],
-                             list(fiaResults[[i2-1]][[parentNameTMP]]))
-                       }
+					   for(ifiaMatrixNew in 1:length(fiaResults[[i2-1]][[parentNameTMP]])){#check all features
+					     if(length(fiaResults[[i2-1]][[parentNameTMP]])<fiaMatrixNew[repSample,fiaResults[[i2-1]][[parentNameTMP]][ifiaMatrixNew]]){
+					       fiaMatrixNew[repSample,fiaResults[[i2-1]][[parentNameTMP]][[ifiaMatrixNew]]]<-length(fiaResults[[i2-1]][[parentNameTMP]])
+					     }
+					   }
                        fiaResults[[i2-1]][[parentNameTMP]]<-NULL
                      }
                    }
@@ -368,29 +364,19 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
           }
         }
      }
-     samplesTestedAdditional[[repSample]]<-unique(c(
-       samplesTestedAdditional[[repSample]],unlist(
-       fiaResults[which(lapply(fiaResults,length)>0)],recursive =FALSE)))
-     if(length(samplesTestedMultiple[[repSample]])>0){
-       for(ifiaList in 1:length(samplesTestedMultiple[[repSample]])){
-        if(!samplesTestedMultiple[[repSample]][ifiaList] %in%
-          fiaListPerSample[[repSample]]){
-           fiaListPerSample[[repSample]]<-c(
-              fiaListPerSample[[repSample]],
-              samplesTestedMultiple[[repSample]])
-        }
+     samplesTestedAdditionalTMP<-unlist(
+       fiaResults[which(lapply(fiaResults,length)>0)],recursive=FALSE)
+     if(length(samplesTestedAdditionalTMP)>0){
+       for(ifiaList in 1:length(samplesTestedAdditionalTMP)){
+		 for(ifiaMatrixNew in 1:length(samplesTestedAdditionalTMP[[ifiaList]])){#check all features
+			 if(length(samplesTestedAdditionalTMP[ifiaList])<fiaMatrixNew[repSample,samplesTestedAdditionalTMP[[ifiaList]][[ifiaMatrixNew]]]){
+			   fiaMatrixNew[repSample,samplesTestedAdditionalTMP[[ifiaList]][[ifiaMatrixNew]]]<-length(samplesTestedAdditionalTMP[[ifiaList]])
+			 }
+		 }
        }
+	   rm(samplesTestedAdditionalTMP)
      }
-     if(length(samplesTestedAdditional[[repSample]])>0){
-       for(ifiaList in 1:length(samplesTestedAdditional[[repSample]])){
-        if(!samplesTestedAdditional[[repSample]][ifiaList] %in%
-          fiaListPerSample[[repSample]]){
-           fiaListPerSample[[repSample]]<-c(
-              fiaListPerSample[[repSample]],
-              samplesTestedAdditional[[repSample]])
-        }
-       }
-     }
+	 
      if(steps2/(length(seedList)*length(sampleVector))>=steps*stepSizePercent/100){
        if(verbose){
          message(steps*stepSizePercent,"% ",appendLF = FALSE)
@@ -399,43 +385,25 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
            if(steps*stepSizePercent<100) message("100% ",appendLF = FALSE)
            message("\n",appendLF=FALSE)
            flush.console()
-         } #else {
-         #}
+         } 
        }
        steps<-steps+1
      }
      steps2<-steps2+1
+	 gc()
+     if(kerasClearMemory==2){
+	   keras::k_clear_session()
+	   keras::load_model_tf(filepath="fiaTMP",custom_objects=NULL, compile=TRUE)
+     }
+   }
+   if(kerasClearMemory>0){
+	   keras::k_clear_session()
+	   keras::load_model_tf(filepath="fiaTMP",custom_objects=NULL, compile=TRUE)
    }
   }
-
-  #calculate fia scores
-  fiaMatrix<-matrix(NA,nrow=length(fiaListPerSample),ncol=ncol(dataSet))
-  colnames(fiaMatrix)<-colnames(dataSet)
-  rownames(fiaMatrix)<-names(fiaListPerSample)
-  for(ifiaMatrix in 1:length(fiaListPerSample)){
-    if(length(fiaListPerSample[[ifiaMatrix]])>0){
-       scoresTMP<-rank(unlist(lapply(fiaListPerSample[[ifiaMatrix]],length)),
-       ties.method ="first")
-       for(iscoresTMP in 1:length(scoresTMP)){
-        #now find lowest entry in order
-        matchTMP<-which(scoresTMP==iscoresTMP)
-        for(iscoresTMP2 in 1:length(fiaListPerSample[[ifiaMatrix]][[matchTMP]])){
-         if(is.na(fiaMatrix[ifiaMatrix,
-            fiaListPerSample[[ifiaMatrix]][[matchTMP]][iscoresTMP2]])){
-            fiaMatrix[ifiaMatrix,fiaListPerSample[[ifiaMatrix]][[matchTMP]]
-              [iscoresTMP2]]<-length(fiaListPerSample[[ifiaMatrix]][[matchTMP]])
-         }
-        }
-       }
-    }
-  }
-  #Assign high score to features of no impact
-  fiaMatrix[is.na(fiaMatrix)]<-ncol(dataSet)
-  #fia scores for the whole data set
-  #fiaAllTMP<-apply(fiaMatrix,2,min,na.rm=TRUE)
+  #calculate fia scores for the whole data set
+  fiaMatrix<-fiaMatrixNew
   fiaMatrixTMP<-fiaMatrix
-  #fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
-  #if(0 %in% fiaAllTMPTest) fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
   fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
   fiaAll<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(fiaAllTMP,nrow(fiaMatrixTMP)),
      nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
@@ -446,10 +414,6 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
     if(sum(sampleVector[rownames(fiaMatrix)]==names(scores)[iScores])>0){
       fiaMatrixTMP<-fiaMatrix[sampleVector[rownames(fiaMatrix)]==names(scores)[
         iScores],,drop=FALSE]
-      #fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
-      #if(0 %in% fiaAllTMPTest){
-      #  fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
-      #}
       fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
       scores[[iScores]]<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(
          fiaAllTMP,nrow(fiaMatrixTMP)),
@@ -460,23 +424,16 @@ fia<-function(model,dataSet,factors,nSeed=6,numberOfSamples=100,
   scoresIndividual<-vector("list",nrow(fiaMatrix))
   names(scoresIndividual)<-rownames(fiaMatrix)
   for(iScores in 1:length(scoresIndividual)){
-    #if(sum(sampleVector[rownames(fiaMatrix)]==names(scoresIndividual)[iScores])>0){
       fiaMatrixTMP<-fiaMatrix[iScores,,drop=FALSE]
-      #fiaAllTMPTest<-apply(!is.na(fiaMatrixTMP),2,sum)
-      #if(0 %in% fiaAllTMPTest){
-      #  fiaMatrixTMP<-fiaMatrixTMP[,!fiaAllTMPTest==0,drop=FALSE]
-      #}
       fiaAllTMP<-apply(fiaMatrixTMP,2,min,na.rm=TRUE)
       scoresIndividual[[iScores]]<-sort(fiaAllTMP+(1-apply(fiaMatrixTMP==matrix(rep(
          fiaAllTMP,nrow(fiaMatrixTMP)),
          nrow=nrow(fiaMatrixTMP),byrow=TRUE),2,sum,na.rm=TRUE)/nrow(fiaMatrixTMP)))
-    #}
   }
   return(list(
     scores=scores,
     scoresSummary=fiaAll,
     scoresIndividual=scoresIndividual,
-    fiaListPerSample=fiaListPerSample,
     fiaMatrix=fiaMatrix))
 }
 
@@ -678,19 +635,23 @@ resetEnv<-function(){
 #'                 ))
 
 mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
-  if(!exists("mrbin.env", mode="environment")) .onLoad()
-  if(setDefault) resetEnv()
-  if(!is.null(parameters)) setParam(parameters=parameters)
-  if(!is.null(metadata)) setParam(metadata=metadata)
-  if(!is.null(mrbin.env$mrbin$parameters$Factors)){
-    mrbin.env$mrbin$metadata$factors<-mrbin.env$mrbin$parameters$Factors  #for backward compatibility
-    mrbin.env$mrbin$parameters$Factors<-NULL
-  }
-  stopTMP<-FALSE
-  selectionRepeat<-""
-  #if(silent){
-    startmrbin<-"Start binning now"
-  #}
+ if(!exists("mrbin.env", mode="environment")) .onLoad()
+ if(setDefault) resetEnv()
+ if(!is.null(parameters)) setParam(parameters=parameters)
+ if(!is.null(metadata)) setParam(metadata=metadata)
+ if(!is.null(mrbin.env$mrbin$parameters$Factors)){
+   mrbin.env$mrbin$metadata$factors<-mrbin.env$mrbin$parameters$Factors  #for backward compatibility
+   mrbin.env$mrbin$parameters$Factors<-NULL
+ }
+ stopTMP<-FALSE
+ selectionRepeat<-""
+ #if(silent){
+   startmrbin<-"Start binning now"
+ #}
+ restart<-TRUE
+ while(restart){#for restarting during data review
+  restart<-FALSE
+  mrbin.env$mrbin$parameters$warningMessages<-NULL
   if(!silent){
    if(Sys.info()['sysname']=='Darwin'){#On Apple or Mac computer, display a hint for installing Quartz
      if(mrbin.env$mrbin$parameters$verbose){
@@ -788,7 +749,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
        if(selectStep==2){#Select folders
          if(!stopTMP){
            addFoldersTMP<-""
-           if(!is.null(mrbin.env$mrbin$parameters$NMRfolders)){
+           if(length(mrbin.env$mrbin$parameters$NMRfolders)>0){
                 selectionFoldersYes<-paste("Keep current list (",length(mrbin.env$mrbin$parameters$NMRfolders),
                                      " spectra)",sep="")
                 selectionFolders<-utils::select.list(c("Create new spectra list",selectionFoldersYes,
@@ -821,9 +782,16 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
            } else {
                 selectionFolders<-selectFolders()
                 if(selectionFolders=="stop")  stopTMP<-TRUE
+                #if(selectionFolders=="")  stopTMP<-TRUE
            }
          }
-         if(!stopTMP&(selectionFolders=="Go back"|addFoldersTMP=="Go back")) selectStep<-selectStep-2
+         if(!stopTMP){
+          if((selectionFolders=="Go back"|addFoldersTMP=="Go back")){
+           selectStep<-selectStep-2
+          } else {
+           if(length(mrbin.env$mrbin$parameters$NMRfolders)<1) selectStep<-selectStep-1
+          }
+         }
          if(!stopTMP) selectStep<-selectStep+1
        }
        if(selectStep==3){
@@ -909,8 +877,11 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                   ceiling(length(mrbin.env$mrbin$parameters$NMRfolders)*.66),
                   length(mrbin.env$mrbin$parameters$NMRfolders))),1)
                 if(length(mrbin.env$mrbinTMP$spectrumListPlotTMP)>0){
-                  #for 2D only load and plot 2 spectra to save time
-                  if(mrbin.env$mrbin$parameters$dimension=="2D") mrbin.env$mrbinTMP$spectrumListPlotTMP<-mrbin.env$mrbinTMP$spectrumListPlotTMP[1]
+                  #for 2D load and plot less spectra to save time
+                  if(mrbin.env$mrbin$parameters$dimension=="2D"){
+                    mrbin.env$mrbinTMP$spectrumListPlotTMP<-mrbin.env$mrbinTMP$spectrumListPlotTMP[1:
+                      min(mrbin.env$mrbin$parameters$maxPreviewPlots2D-1,length(mrbin.env$mrbinTMP$spectrumListPlotTMP))]
+                  }
                   for(ispectrumListPlotTMP in 1:length(mrbin.env$mrbinTMP$spectrumListPlotTMP)){
                     addToPlot(folder=mrbin.env$mrbin$parameters$NMRfolders[
                       mrbin.env$mrbinTMP$spectrumListPlotTMP[ispectrumListPlotTMP]],
@@ -2119,14 +2090,23 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
        }
      }
     }
-   }
+   }#end if(!silent)
    if(!stopTMP){
-    if(startmrbin=="Start binning now"){#Check if files or folders exist first to avoid long waiting times
+    if(startmrbin=="Start binning now"){
+     #Check if files or folders exist first to avoid long waiting due to binning failure
      for(iCheckFiles in 1:length(mrbin.env$mrbin$parameters$NMRfolders)){
        readNMR(folder=mrbin.env$mrbin$parameters$NMRfolders[iCheckFiles],
          dimension=mrbin.env$mrbin$parameters$dimension,checkFiles=TRUE)
      }
      mrbin.env$mrbin<-mrbinrun(createbins=TRUE,process=FALSE,silent=silent)
+     if(mrbin.env$mrbin$parameters$verbose){
+      if(!is.null(mrbin.env$mrbin$parameters$warningMessages)){
+       for(iWarningTMP in 1:length(mrbin.env$mrbin$parameters$warningMessages)){
+          message("Warning: ",mrbin.env$mrbin$parameters$warningMessages[iWarningTMP])
+       }
+       utils::flush.console()
+      }
+     }
     }
    }
    if(!silent){
@@ -2135,7 +2115,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
        selectStep<-25
        lastStepDone<-TRUE
     }
-    while(!lastStepDone&!stopTMP){
+    while(!lastStepDone&!stopTMP&!restart){
      if(selectionRepeat=="Review parameters"&!stopTMP){
            if(selectStep==15){
               if(!stopTMP){
@@ -2144,10 +2124,15 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                  utils::flush.console()
                 }
                 plotReview<-utils::select.list(c("I will fix issues, if any, and then run mrbin again",
-                                                 "I have fixed all spectrum issues and wish to continue"),
+                                                 "I have fixed all spectrum issues and wish to continue",
+                                                 "I would like to restart to adjust parameters"),
                                          preselect="I will fix issues, if any, and then run mrbin again",
                                          title="Please review data for quality issues",graphics=TRUE)
                 if(length(plotReview)==0|plotReview==""|plotReview=="I will fix issues, if any, and then run mrbin again") stopTMP<-TRUE
+                if(!stopTMP&plotReview=="I would like to restart to adjust parameters"){
+                  restart<-TRUE
+                  selectStep<--4#start from beginning
+                }
                 if(!stopTMP) selectStep<-selectStep+1
               }
            }
@@ -2155,15 +2140,20 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
               if(!stopTMP){
                if(!is.null(mrbin.env$mrbin$parameters$warningMessages)){
                  if(mrbin.env$mrbin$parameters$verbose){
-                   message("Hint: Run warnings(), fix issues if possible, then run mrbin again")
+                   message("Hint: Run warnings(), fix issues if possible, then run mrbin again\n")
                    utils::flush.console()
                  }
                  listWarningTMP<-c("I will check warnings() and then run mrbin again",
-                                                   "I have fixed all issues and wish to continue")
+                                   "I have fixed all issues and wish to continue",
+                                   "I would like to restart to adjust parameters")
                  plotReview<-utils::select.list(listWarningTMP,
                                            preselect="I will check warnings() and then run mrbin again",
                                            title="There were warning messages",graphics=TRUE)
                  if(length(plotReview)==0|plotReview==""|plotReview=="I will check warnings() and then run mrbin again") stopTMP<-TRUE
+                }
+                if(!stopTMP&plotReview=="I would like to restart to adjust parameters"){
+                  selectStep<--4#start from beginning
+                  restart<-TRUE
                 }
                 if(!stopTMP) selectStep<-selectStep+1
               }
@@ -2337,11 +2327,12 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
               }
             }
        if(selectStep>=23){
-         if(!stopTMP)  lastStepDone<-TRUE
+         if(!stopTMP&!restart)  lastStepDone<-TRUE
        }
      }
     }
-   }
+   }#end if(!silent)
+ }
  if(!stopTMP){
    mrbin.env$mrbin<-mrbinrun(createbins=FALSE,process=TRUE,mrbinResults=mrbin.env$mrbin,
      silent=silent)
@@ -2484,7 +2475,7 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
           }
         }
       #create and save noise plots
-      if(silent&mrbinResults$parameters$saveFiles=="Yes") setNoiseLevels(mrbinResults,plotOnly=TRUE)
+      if(silent&mrbinResults$parameters$saveFiles=="Yes") setNoiseLevels(mrbinResults,plotOnly=TRUE,silent=silent)
       if(mrbinResults$parameters$noiseRemoval=="Yes") mrbinResults<-removeNoise(mrbinResults,verbose=FALSE)
       if(mrbinResults$parameters$dilutionCorrection=="Yes") mrbinResults<-dilutionCorrection(mrbinResults)
       if(mrbinResults$parameters$fixNegatives=="Yes") mrbinResults<-atnv(mrbinResults,verbose=FALSE)
@@ -2539,7 +2530,7 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
     }
     if(mrbinResults$parameters$PCA=="Yes"){
       if(mrbin.env$mrbin$parameters$saveFiles=="Yes"|process|!silent){
-        plotResults(mrbinResults,defineGroups=defineGroups,process=process)
+        plotResults(mrbinResults,defineGroups=defineGroups,process=process,silent=silent)
       }
     }
     invisible(mrbinResults)
@@ -2552,6 +2543,7 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
 #' @param mrbinObject An mrbin object
 #' @param dilutionFactors An optional vector of dilution factors. If provided, no user input is requested
 #' @param errorsAsWarnings If TRUE, errors will be turned into warnings. Should be used with care, as errors indicate undocumented changes to the data.
+#' @param alwaysShowOptionKeep If TRUE, you will be asked to keep current values even if they do not match the current dataset.
 #' @return An invisible mrbin object
 #' @export
 #' @examples
@@ -2565,18 +2557,21 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
 #'                    ))
 #'  mrbinObject<-setDilutionFactors(mrbinObject,dilutionFactors=c(1.5,2))
 
-setDilutionFactors<-function(mrbinObject,dilutionFactors=NULL,errorsAsWarnings=FALSE){
+setDilutionFactors<-function(mrbinObject,dilutionFactors=NULL,
+  errorsAsWarnings=FALSE,alwaysShowOptionKeep=FALSE){
   stopTMP<-FALSE
   if(is.null(dilutionFactors)){
-     yesOptionTMP<-NULL
      optionTMP<-"Create new list"
+	 yesOptionTMP<-optionTMP
+	 if(alwaysShowOptionKeep) yesOptionTMP<-c("Keep current dilution factors",
+	   yesOptionTMP)
      if(length(mrbinObject$metadata$dilutionFactors)==
         nrow(mrbinObject$bins)){
-         yesOptionTMP<-c("Keep current dilution factors","Edit current dilution factors")
-         optionTMP<-yesOptionTMP[1]
+         yesOptionTMP<-unique(c(yesOptionTMP,"Keep current dilution factors",
+		 "Edit current dilution factors"))
      }
-     selectionFactors<-utils::select.list(c(yesOptionTMP,
-                     "Create new list"),
+     optionTMP<-yesOptionTMP[1]
+     selectionFactors<-utils::select.list(yesOptionTMP,
                      preselect=optionTMP,
                      title = "Use previous dilution factors?",graphics=TRUE)
      if(length(selectionFactors)==0|selectionFactors=="") stopTMP<-TRUE
@@ -2597,10 +2592,11 @@ setDilutionFactors<-function(mrbinObject,dilutionFactors=NULL,errorsAsWarnings=F
         }
        }
      }
-  }
-  if(!length(dilutionFactors)==nrow(mrbinObject$bins)){
-    if(!errorsAsWarnings) stop("Data dimension does not match the number of provided dilution factors.")
-    warning("Data dimension does not match the number of provided dilution factors.")
+  } else {
+	  if(!length(dilutionFactors)==nrow(mrbinObject$bins)){
+		if(!errorsAsWarnings) stop("Data dimension does not match the number of provided dilution factors.")
+		warning("Data dimension does not match the number of provided dilution factors.")
+	  }
   }
   if(!stopTMP&!identical(dilutionFactors,mrbinObject$metadata$dilutionFactors)){
     mrbinObject<-editmrbin(mrbinObject=mrbinObject,
@@ -2619,6 +2615,7 @@ setDilutionFactors<-function(mrbinObject,dilutionFactors=NULL,errorsAsWarnings=F
 #' @param mrbinObject An mrbin object
 #' @param plotOnly Should only noise plots be generated (TRUE), or should noise levels be adjusted interactively (FALSE)
 #' @param showSpectrumPreview Should plots be shown? If not provided, this value will be taken from the mrbin object parameters
+#' @param silent If set to TRUE, plots will not be shown but might still be saved
 #' @return An invisible mrbin object
 #' @export
 #' @examples
@@ -2632,7 +2629,8 @@ setDilutionFactors<-function(mrbinObject,dilutionFactors=NULL,errorsAsWarnings=F
 #'                    ))
 #'  mrbinObject<-setNoiseLevels(mrbinObject,plotOnly=TRUE)
 
-setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,showSpectrumPreview=NULL){
+setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
+  showSpectrumPreview=NULL,silent=FALSE){
     if(is.null(showSpectrumPreview)) showSpectrumPreview<-mrbinObject$parameters$showSpectrumPreview
     stopTMP<-FALSE
 
@@ -2991,7 +2989,7 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,showSpectrumPreview=NULL){
     }
     plotRecordingTMP<-grDevices::recordPlot()
     grDevices::dev.off()
-    if(showSpectrumPreview=="Yes"){
+    if(showSpectrumPreview=="Yes"&!silent){
       grDevices::replayPlot(plotRecordingTMP)
     }
     if(plotOnly){
@@ -3072,7 +3070,8 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,showSpectrumPreview=NULL){
           if(i==1){
             nBins[i]<-nBinsTMP
           } else {
-            if(nBinsTMP==ncol(mrbinObject$bins)&nBinsTMP>=nBins[i-1]) nBinsTMP<-0#this usually means no bins left after noise removal
+            if(nBinsTMP==ncol(mrbinObject$bins)&
+             nBinsTMP>nBins[i-1]) nBinsTMP<-0#this usually means no bins left after noise removal
             nBins[i]<-nBinsTMP
           }
         }
@@ -3146,18 +3145,18 @@ metadatamrbin<-function(mrbinResults,metadata=NULL){
          substr(paste(mrbinResults$metadata[[iValues[i]]],sep=" ",collapse=" "),1,45),sep=""))
        utils::flush.console()
        if(iValues[i]=="dilutionFactors"){#Define dilution
-          mrbinResults<-setDilutionFactors(mrbinResults)
+          mrbinResults<-setDilutionFactors(mrbinResults,alwaysShowOptionKeep=TRUE)
        } else {
          if(iValues[i]=="factors"){#Define groups
           selectionFactors<-""
-          defineGroups<-utils::select.list(c("Edit factors",#"Use a column from metadata data.frame",
+          defineGroups<-utils::select.list(c("Edit group memberships",#"Use a column from metadata data.frame",
                                     "Keep","Go back"),
                                     preselect="Keep",
-                                    title = "Edit factors for PCA",graphics=TRUE)
+                                    title = "Edit classes/groups for PCA",graphics=TRUE)
           if(length(defineGroups)==0|defineGroups=="") stopTMP<-TRUE
           if(!stopTMP){
            if(defineGroups=="Go back") i<-i-2
-           if(defineGroups=="Edit factors"){
+           if(defineGroups=="Edit group memberships"){
                if(!is.null(mrbinResults$metadata$factors)){
                  if(length(mrbinResults$metadata$factors)==length(mrbinResults$parameters$NMRfolders)){
                    yesOptionTMP<-paste("Use previous factor list (",
@@ -4066,6 +4065,13 @@ binMultiNMR<-function(){
     mrbin.env$mrbinTMP$binNames<-NULL
     #Open and bin all spectra
     #Before binning first spectrum
+    mrbin.env$mrbin$parameters$AcquPars<-list(
+      NS=rep(0,length(mrbin.env$mrbin$parameters$NMRfolders)),
+      BF1=rep(0,length(mrbin.env$mrbin$parameters$NMRfolders)),
+      P1=rep(0,length(mrbin.env$mrbin$parameters$NMRfolders)),
+      RG=rep(0,length(mrbin.env$mrbin$parameters$NMRfolders)),
+      PULPROG=rep("",length(mrbin.env$mrbin$parameters$NMRfolders)),
+      SOLVENT=rep("",length(mrbin.env$mrbin$parameters$NMRfolders)))
     mrbin.env$mrbin$parameters$noise_level_Raw<-rep(NA,length(mrbin.env$mrbin$parameters$NMRfolders))
     mrbin.env$mrbin$parameters$noise_level<-matrix(rep(NA,length(mrbin.env$mrbin$parameters$NMRfolders)*
       nrow(mrbin.env$mrbin$parameters$binRegions)),ncol=nrow(mrbin.env$mrbin$parameters$binRegions))
@@ -4119,6 +4125,7 @@ binMultiNMR<-function(){
           binMethod=mrbin.env$mrbin$parameters$binMethod,
           useAsNames=mrbin.env$mrbin$parameters$useAsNames,
           useMeanIntensityForBins=mrbin.env$mrbin$parameters$useMeanIntensityForBins
+          #,readAcqus=TRUE
         )
       ,silent=TRUE)
       try(parallel::stopCluster(cluster),silent=TRUE)
@@ -4150,6 +4157,7 @@ binMultiNMR<-function(){
         binMethod=mrbin.env$mrbin$parameters$binMethod,
         useAsNames=mrbin.env$mrbin$parameters$useAsNames,
         useMeanIntensityForBins=mrbin.env$mrbin$parameters$useMeanIntensityForBins
+        #,readAcqus=TRUE
         )
     }
     binsRaw<-matrix(rep(0,nrow(mrbin.env$mrbin$parameters$binRegions)*
@@ -4164,6 +4172,14 @@ binMultiNMR<-function(){
             c(mrbin.env$mrbin$parameters$warningMessages,
               binData[[ibinData]]$warningMessage)
       }
+      #save acquisition parameters
+      mrbin.env$mrbin$parameters$AcquPars$RG[ibinData]<-binData[[ibinData]]$AcquPars$RG
+      mrbin.env$mrbin$parameters$AcquPars$NS[ibinData]<-binData[[ibinData]]$AcquPars$NS
+      mrbin.env$mrbin$parameters$AcquPars$BF1[ibinData]<-binData[[ibinData]]$AcquPars$BF1
+      mrbin.env$mrbin$parameters$AcquPars$PULPROG[ibinData]<-binData[[ibinData]]$AcquPars$PULPROG
+      mrbin.env$mrbin$parameters$AcquPars$SOLVENT[ibinData]<-binData[[ibinData]]$AcquPars$SOLVENT
+      mrbin.env$mrbin$parameters$AcquPars$P1[ibinData]<-binData[[ibinData]]$AcquPars$P1
+
       binsRaw[ibinData,]<-binData[[ibinData]]$binTMP
       mrbin.env$mrbinTMP$meanNumberOfPointsPerBin[ibinData,]<-
         binData[[ibinData]]$meanNumberOfPointsPerBin_TMP
@@ -4174,6 +4190,38 @@ binMultiNMR<-function(){
       mrbin.env$mrbin$parameters$noise_level_adjusted[ibinData]<-
         median(binData[[ibinData]]$noise_level_TMP)
       currentSpectrumNameTMP[ibinData]<-binData[[ibinData]]$currentSpectrumName
+    }
+    if(length(unique(mrbin.env$mrbin$parameters$AcquPars$NS))>1){
+      warningTMP<-paste("NS mismatch: ",
+        paste(unique(mrbin.env$mrbin$parameters$AcquPars$NS),sep=", ",collapse=", ")
+        ,". Number of scans differs between spectra. Data could be inconsistent.",sep="")
+      warning(warningTMP)#save warning message to parameters
+      mrbin.env$mrbin$parameters$warningMessages<-
+            c(mrbin.env$mrbin$parameters$warningMessages,warningTMP)
+    }
+    if(length(unique(mrbin.env$mrbin$parameters$AcquPars$BF1))>1){
+      warningTMP<-paste("BF1 mismatch: ",
+        paste(unique(mrbin.env$mrbin$parameters$AcquPars$BF1),sep=", ",collapse=", ")
+        ,". Magnets differ between spectra. Data could be inconsistent.",sep="")
+      warning(warningTMP)#save warning message to parameters
+      mrbin.env$mrbin$parameters$warningMessages<-
+            c(mrbin.env$mrbin$parameters$warningMessages,warningTMP)
+    }
+    if(length(unique(mrbin.env$mrbin$parameters$AcquPars$PULPROG))>1){
+      warningTMP<-paste("PULPROG mismatch: ",
+        paste(unique(mrbin.env$mrbin$parameters$AcquPars$PULPROG),sep=", ",collapse=", ")
+        ,". Pulse programs differ between spectra. Data could be inconsistent.",sep="")
+      warning(warningTMP)#save warning message to parameters
+      mrbin.env$mrbin$parameters$warningMessages<-
+            c(mrbin.env$mrbin$parameters$warningMessages,warningTMP)
+    }
+    if(length(unique(mrbin.env$mrbin$parameters$AcquPars$SOLVENT))>1){
+      warningTMP<-paste("SOLVENT mismatch: ",
+        paste(unique(mrbin.env$mrbin$parameters$AcquPars$SOLVENT),sep=", ",collapse=", ")
+        ,". Solvents differ between spectra. Data could be inconsistent.",sep="")
+      warning(warningTMP)#save warning message to parameters
+      mrbin.env$mrbin$parameters$warningMessages<-
+            c(mrbin.env$mrbin$parameters$warningMessages,warningTMP)
     }
     #i_currentSpectrumNameTMP<-1
     duplicatedFlag<-FALSE
@@ -4188,9 +4236,14 @@ binMultiNMR<-function(){
       }
     }
     if(duplicatedFlag){
-      warning(paste(
+      warningDuplicateTMP<-paste(
         "Renamed duplicate spectrum titles. Please use a different naming method.",
-        sep=""))
+        sep="")
+      warning(warningDuplicateTMP)
+      #save warning message to parameters
+      mrbin.env$mrbin$parameters$warningMessages<-
+            c(mrbin.env$mrbin$parameters$warningMessages,
+              warningDuplicateTMP)
     }
     rownames(binsRaw)<-currentSpectrumNameTMP
     colnames(binsRaw)<-names(binData[[1]]$binTMP)
@@ -4347,17 +4400,22 @@ createBinNumbers<-function(){
 #' @examples
 #' \donttest{ readNMR2() }
 
-readNMR2<-function(onlyTitles=FALSE,dimension=NULL,NMRvendor=NULL,useAsNames=NULL,folder=NULL){#Read NMR spectral data
+readNMR2<-function(onlyTitles=FALSE,dimension=NULL,NMRvendor=NULL,
+  useAsNames=NULL,folder=NULL#,readAcqus=FALSE
+  ){#Read NMR spectral data
    if(is.null(dimension)) dimension<-mrbin.env$mrbin$parameters$dimension
    if(is.null(NMRvendor)) NMRvendor<-mrbin.env$mrbin$parameters$NMRvendor
    if(is.null(useAsNames)) useAsNames<-mrbin.env$mrbin$parameters$useAsNames
    if(is.null(folder)) folder<-mrbin.env$mrbinTMP$currentFolder
 
    NMRdataList<-readNMR(onlyTitles=onlyTitles,folder=folder,
-           dimension=dimension,NMRvendor=NMRvendor,useAsNames=useAsNames)
+           dimension=dimension,NMRvendor=NMRvendor,
+           useAsNames=useAsNames#,readAcqus=readAcqus
+           )
    if(!onlyTitles){
      mrbin.env$mrbinTMP$currentSpectrum<-NMRdataList$currentSpectrum
      mrbin.env$mrbinTMP$currentSpectrumOriginal<-NMRdataList$currentSpectrum
+     #<-NMRdataList$AcquPars
    }
    mrbin.env$mrbinTMP$currentSpectrumTitle<-NMRdataList$currentSpectrumTitle
    mrbin.env$mrbinTMP$currentSpectrumFolderName<-NMRdataList$currentSpectrumFolderName
@@ -4795,9 +4853,8 @@ checkBaseline<-function(NMRdata=NULL,dimension="1D",currentSpectrumName=NULL,
     }
     warningMessage<-NULL
     if(abs(baseline_level)/sd_level>10){
-      warningMessage<-paste("Baseline is not flat in noise region for sample:\n",
-                  currentSpectrumName,
-                  "\nPlease check phase and baseline. Results may be corrupted.",
+      warningMessage<-paste("Baseline distorted (noise region): ",currentSpectrumName,
+                  ". Please check phase and baseline. Results may be corrupted.",
                   sep="")
     }
     invisible(warningMessage)
@@ -5211,6 +5268,7 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
 #' @param mrbinResults An mrbin object
 #' @param defineGroups Should group membership be highlighted in PCA?
 #' @param process If set to FALSE, the file name will be extended by "Raw" to indicate that data has not been processed yet
+#' @param silent If set to TRUE, plots will be saved but not shown for the binning step for speed purposes
 #' @return {None}
 #' @export
 #' @examples
@@ -5222,7 +5280,7 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
 #'                  system.file("extdata/2/12/pdata/10",package="mrbin"))))
 #' plotResults(mrbinResults)
 
-plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE){
+plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
  if(!is.null(mrbinResults$bins)){
     #first write plot to object, then plot object (speed!)
     outputFileName<-mrbinResults$parameters$outputFileName
@@ -5320,7 +5378,7 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE){
     plotPCA(mrbinResults,defineGroups=defineGroups,loadings=FALSE,verbose=FALSE)
     plotRecordingTMP<-grDevices::recordPlot()
     invisible(grDevices::dev.off())
-    grDevices::replayPlot(plotRecordingTMP)
+    if(process|(!process&!silent)) grDevices::replayPlot(plotRecordingTMP)
  }
 }
 
@@ -6173,7 +6231,8 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
   if(!is.null(folder)){
     warningMessage<-NULL
     NMRdataList<-readNMR(folder=folder,dimension=dimension,
-                  NMRvendor=NMRvendor,useAsNames=useAsNames)
+                  NMRvendor=NMRvendor,useAsNames=useAsNames
+                  )
     NMRdata<-NMRdataList$currentSpectrum
     NMRdataOriginal<-NMRdata
     scalingFactor<-1
@@ -6185,9 +6244,8 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
       if(scalingFactor<0){
         scalingFactor<-abs(scalingFactor)
         warningMessage<-#c(warningMessage,
-          paste("Reference signal is negative for sample:\n",
-          NMRdataList$currentSpectrumName,
-          "\nPlease check phase and baseline. Results may be corrupted.",
+          paste("Reference signal is negative: ",NMRdataList$currentSpectrumName,
+          ". Please check phase and baseline. Results may be corrupted.",
           sep="")
       }
     }
@@ -6207,9 +6265,8 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
     if(referenceScaling=="Yes"){
       if(scalingFactor<(.2*noiseData$noise_level)){#3
         warningMessage<-c(warningMessage,paste(
-          "Reference signal is very low for sample:\n",
-          NMRdataList$currentSpectrumName,
-          "\nPlease check if reference peak is at 0ppm. Results may be corrupted.",
+          "Reference signal very low: ",NMRdataList$currentSpectrumName,
+          ". Please check if reference peak is at 0ppm. Results may be corrupted.",
           sep=""))
       }
     }
@@ -6218,13 +6275,14 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
                currentSpectrumName=NMRdataList$currentSpectrumName,
                noiseRange1d=noiseRange1d,noiseRange2d=noiseRange2d)
     if(!is.null(warningMessageTMP)){
-      warningMessage<-paste(warningMessage,warningMessageTMP,sep="\n")
+      warningMessage<-c(warningMessage,warningMessageTMP)
     }
     invisible(list(binTMP=binData$binTMP,
        meanNumberOfPointsPerBin_TMP=binData$pointsPerBin,#mrbin.env$mrbinTMP$meanNumberOfPointsPerBin_TMP
        noise_level_Raw_TMP=noiseData$noise_level,#noise level per sample before reference scaling
        noise_level_TMP=noiseData$noise_level_TMP/scalingFactor,#noise level per bin and sample after reference scaling #noiseDataScaled$noise_level_TMP,
        currentSpectrumName=NMRdataList$currentSpectrumName,
+       AcquPars=NMRdataList$AcquPars,
        warningMessage=warningMessage
        ))
   }
@@ -6249,12 +6307,14 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
 
 readNMR<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
           NMRvendor="Bruker",useAsNames="Spectrum titles",
-          checkFiles=FALSE){#Read NMR spectral data
+          checkFiles=FALSE#,readAcqus=FALSE
+          ){#Read NMR spectral data
  #if(!is.null(mrbin.env$mrbinTMP$currentFolder)){
   if(NMRvendor=="Bruker"){
       currentSpectrum<-readBruker(folder=folder,dimension=dimension,
                       onlyTitles=onlyTitles,useAsNames=useAsNames,
-                      checkFiles=checkFiles)
+                      checkFiles=checkFiles#,readAcqus=readAcqus
+                      )
   }  else {
       stop(paste("No data import function defined for vendor ",NMRvendor,".\n",sep=""))
   }
@@ -6277,19 +6337,13 @@ readNMR<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
 #'                         dimension="1D")
 
 readBruker<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
-  useAsNames="Spectrum titles",checkFiles=FALSE){#Read Bruker NMR spectral data
+  useAsNames="Spectrum titles",checkFiles=FALSE#,readAcqus=FALSE
+  ){#Read Bruker NMR spectral data
+ AcquPars<-list(NS=0,BF1=0,P1=0,RG=0,PULPROG="",SOLVENT="")
  datanameDict<-c("1r","2rr")
  names(datanameDict)<-c("1D","2D")
- #if(is.null(folder)){
- #  spectrum_proc_path<-gsub('\\\\',"/",mrbin.env$mrbinTMP$currentFolder)
- #} else {
-   spectrum_proc_path<-folder
- #}
- #if(is.null(dimension)){
- #  datanameTmp<-datanameDict[mrbin.env$mrbin$parameters$dimension]
- #} else {
-   datanameTmp<-datanameDict[dimension]
- #}
+ spectrum_proc_path<-folder
+ datanameTmp<-datanameDict[dimension]
  if(!is.null(spectrum_proc_path)){
    BYTORDP_Dict<-c("little","big")
    names(BYTORDP_Dict)<-c(0,1)
@@ -6309,6 +6363,43 @@ readBruker<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
      }
    }  else {
      if(!onlyTitles){
+       #if(readAcqus){
+       #try reading acquisition parameters for reporting
+         spectrum_acqu_path<-NULL
+         spectrum_acqu_pathTMP<-strsplit(spectrum_proc_path,"/")[[1]]
+         spectrum_acqu_path<-paste(spectrum_acqu_pathTMP[1:
+           (length(spectrum_acqu_pathTMP)-2)],sep="/",collapse="/")
+         acqusTMP<-NULL
+         try(acqusTMP<-scan(file=paste(spectrum_acqu_path,"/acqu",
+           sep=""),what="character",sep="\n",quiet=TRUE),
+           silent=TRUE)
+         if(!(is.null(acqusTMP)|(length(acqusTMP)==0))){
+           acqusTMP<-gsub("#","",acqusTMP)
+           acqusTMP<-gsub("\\$"," ",acqusTMP)
+           RGpos<-grep(" RG=",acqusTMP)
+           if(length(RGpos)>0) AcquPars$RG<-as.numeric(strsplit(
+             acqusTMP[RGpos],split="= ")[[1]][2])#receiver gain
+           NSpos<-grep(" NS=",acqusTMP)
+           if(length(NSpos)>0) AcquPars$NS<-as.numeric(strsplit(
+             acqusTMP[NSpos],split="= ")[[1]][2])#NS number of scans
+           BF1pos<-grep(" BF1=",acqusTMP)
+           if(length(BF1pos)>0) AcquPars$BF1<-as.numeric(strsplit(
+             acqusTMP[BF1pos],split="= ")[[1]][2])#BF1 Specrometer frequency
+           PULPROGpos<-grep(" PULPROG=",acqusTMP)
+           if(length(PULPROGpos)>0) AcquPars$PULPROG<-strsplit(
+             acqusTMP[PULPROGpos],split="= ")[[1]][2]#pulse program name
+           SOLVENTpos<-grep(" SOLVENT=",acqusTMP)
+           if(length(SOLVENTpos)>0) AcquPars$SOLVENT<-strsplit(
+             acqusTMP[SOLVENTpos],split="= ")[[1]][2]#solvent name
+           P1pos<-grep(" P=",acqusTMP)
+           if(length(P1pos)>0) AcquPars$P1<-as.numeric(#substr(
+             strsplit(
+             acqusTMP[P1pos+1],
+             ,split=" ")[[1]][2]#entry 2 is P1
+             #1,5)
+             )#90 degree pulse length #$P= (0..63)\n 13.33
+         }
+       #}
        proc<-scan(file=paste(spectrum_proc_path,"/procs",sep=""),what="character",sep="\n",quiet=TRUE)
        proc<-gsub("#","",proc)
        proc<-gsub("\\$"," ",proc)
@@ -6375,7 +6466,8 @@ readBruker<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
            currentSpectrumTitle=currentSpectrumTitle,
            currentSpectrumFolderName=currentSpectrumFolderName,
            currentSpectrumEXPNO=currentSpectrumEXPNO,
-           currentSpectrumFolderName_EXPNO=currentSpectrumFolderName_EXPNO))
+           currentSpectrumFolderName_EXPNO=currentSpectrumFolderName_EXPNO,
+           AcquPars=AcquPars))
  }
 }
 
@@ -6570,6 +6662,7 @@ createmrbin<-function(){
                previewRegion2D=c(2,1,16.5,27),
                noisePreviewRegion1D=rbind(c(8.1,7.5,125,135),c(3.3,2.7,38,50),c(1.1,.5,10,27)),
                noisePreviewRegion2D=rbind(c(8.0,7.2,123,137),c(3.7,2.9,38,50),c(1.6,.8,9,28)),
+               maxPreviewPlots2D=2,
                saveFiles="No",
                verbose=TRUE,
                outputFileName=NULL,
@@ -6579,6 +6672,7 @@ createmrbin<-function(){
                noise_level_adjusted=NULL,
                noise_level=NULL,#noise levels for each bin of each spectrum
                binRegions=matrix(ncol=4,nrow=0,dimnames=list(NULL,c("left","right","top","bottom"))),
+               AcquPars=list(NS=0,BF1=0,P1=0,RG=0,PULPROG="",SOLVENT=""),
                numberOfFeaturesRaw=NULL,
                numberOfFeaturesAfterRemovingSolvent=NULL,
                numberOfFeaturesAfterRemovingAreas=NULL,
@@ -6592,7 +6686,6 @@ createmrbin<-function(){
                errorsAsWarnings=FALSE,
                Factors=NULL,#for backward conpatibility
                defineGroups=NULL#to be removed in future versions
-               #warningFlag=NULL
     ),
     metadata=list(
                projectTitle="",#Project title

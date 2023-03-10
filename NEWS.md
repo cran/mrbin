@@ -1,5 +1,17 @@
 # mrbin News
 
+## Version 1.7.3
+
+* mrbin: Warnings are now displayed during binning
+* mrbin: New warnings if spectra differ in field strength, pulse program, solvent, or number of scans. This could cause inconsistent data
+* mrbin: Some acquisition parameters such as p1 pulse ength are now saved in parameters$AcquPars
+* mrbin: Small potential bugs fixed in spectrum selection step
+* mrbin: Bugfix: In rare cases the preview of features after noise removal was incorrect, this is now fixed
+* fia: Predictions now show less output (using verbose=0 within the predict function)
+* fia: Memory usage improvements. If using package keras, consider using kerasClearMemory=2 for massive memory and speed improvements
+* fia: Parameter innerLoop is now default at 300 (was 100) to increase quality of results. This increases calculation times. 
+
+
 ## Version 1.7.2
 
 * In setNoiseLevels() there is now a preview of the number of bins left for noise thresholds between 0.05 and 1
@@ -8,6 +20,7 @@
 * Speed improvements in 2D plots by reducing the number of displayed data points
 * plotResults() will now show a preview of spectral region evens if no spectral data has been loaded before. This is useful when using mrbin objects that have been previously created
 * Small improvements to documentations and vignette
+
 
 ## Version 1.7.1
 
