@@ -1,6 +1,6 @@
 Package: mrbin
 Title: Metabolomics Data Analysis Functions
-Version: 1.7.3
+Version: 1.7.4
 Authors@R: 
     person(given = "Matthias",
            family = "Klein",
@@ -25,8 +25,8 @@ VignetteBuilder: utils
 URL: http://www.kleinomicslab.com/software/,
         https://github.com/kleinomicslab/mrbin
 NeedsCompilation: no
-Packaged: 2023-03-10 20:33:11 UTC; klein.663
+Packaged: 2023-04-11 02:12:23 UTC; klein.663
 Author: Matthias Klein [aut, cre] (<https://orcid.org/0000-0001-7455-5381>)
 Maintainer: Matthias Klein <matthias.s.klein@gmx.net>
 Repository: CRAN
-Date/Publication: 2023-03-10 20:50:02 UTC
+Date/Publication: 2023-04-11 03:00:02 UTC

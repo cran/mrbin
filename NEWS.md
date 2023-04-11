@@ -1,5 +1,10 @@
 # mrbin News
 
+## Version 1.7.4
+
+* mrbin: Bugfixes especially for plots in (Mac) RStudio
+
+
 ## Version 1.7.3
 
 * mrbin: Warnings are now displayed during binning

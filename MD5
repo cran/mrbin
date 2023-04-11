@@ -1,13 +1,13 @@
-8ea93899ed0617377aca3d09a93d29b2 *DESCRIPTION
+9dd7230dd4ee2aa9ff81b011a545a2ee *DESCRIPTION
 36161119b6c291edd90b8ec7a11edbcb *NAMESPACE
-1e4066549d5291b60ac9e4bca91aa18d *NEWS.md
-166d1e380e5a1f8a1be0b43ed2d6948e *R/mrbin.R
+deb6b8e0a80d607d68b7dd334cd0213e *NEWS.md
+53bfc6959c3241b0a83591e55176301f *R/mrbin.R
 84ee8c601e362e45563d3a4742f15a81 *README.md
 416fa6e0aaef828e0f958346a629c906 *build/vignette.rds
 4c07506ebf36716f39c7ff21889acfd7 *inst/CITATION
 079c69ef9d0d2d53c6f19900ebd86c89 *inst/doc/mrbin.R
 45027fbde3b57aa97090430a2c655fee *inst/doc/mrbin.Rnw
-26fa9f1d177ef9cfc60aa8f94a325ab4 *inst/doc/mrbin.pdf
+eea950791b67dd84ee746479979c9bf2 *inst/doc/mrbin.pdf
 7f533ba2dc8757db2cb7ad055176a2b5 *inst/extdata/1/10/acqu
 7b02c0e5793e4043060634d0ae0a151d *inst/extdata/1/10/pdata/10/1r
 0a67540dea70f95671702dc84c0d4896 *inst/extdata/1/10/pdata/10/proc
@@ -69,7 +69,7 @@ dafb30b7606f7cb9ee58d1352d009937 *man/intMin.Rd
 4b93ffc4a86b26d8cd16f51c67c0facf *man/mrbinrun.Rd
 3eb109c2696e390be48719e98752c62a *man/mrplot.Rd
 f2aaadb012d0c91df124cc9a8c2093fc *man/plotMultiNMR.Rd
-67dd0334b0f01f8667581e5fae0fbc3a *man/plotNMR.Rd
+2665f362a1c881792d5bde38186dc3cd *man/plotNMR.Rd
 7f1b692120d4399c311f258c5864cf76 *man/plotPCA.Rd
 8c4e65331b4c31dd6c286fecade916df *man/plotResults.Rd
 25f3539250fef05617dd7c3c6e9fe165 *man/predictWrapper.Rd

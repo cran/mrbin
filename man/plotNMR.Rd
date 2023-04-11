@@ -19,7 +19,8 @@ plotNMR(
   currentSpectrumOriginal = NULL,
   perspective = FALSE,
   noise = NULL,
-  dimension = NULL
+  dimension = NULL,
+  plotDelay = 0.1
 )
 }
 \arguments{
@@ -52,6 +53,8 @@ plotNMR(
 \item{noise}{If provided, a line or plane at this level will be added to the plot to indicate noise level}
 
 \item{dimension}{"1D' or "2D". If not provided, this will be deduced from the data}
+
+\item{plotDelay}{Add a small delay in seconds to force RStudio to update plots}
 }
 \value{
 {None}
