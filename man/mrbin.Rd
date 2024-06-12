@@ -27,7 +27,7 @@ is requested and binning and data processing are performed silently.
 \examples{
 # Set parameters in command line.
 mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(
-                dimension="1D",binwidth1D=0.01,tryParallel=FALSE,
+                dimension="1D",binwidth1D=0.01,tryParallel=TRUE,
                 signal_to_noise1D=25,noiseThreshold=0.75,
                 NMRfolders=c(
                 system.file("extdata/1/10/pdata/10",package="mrbin"),

@@ -38,7 +38,7 @@ NULL
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage("mrbin 1.7.4\nFor instructions and examples, please type: vignette('mrbin')")
+    packageStartupMessage("mrbin 1.7.5\nFor instructions and examples, please type: vignette('mrbin')")
 }
 
 
@@ -626,7 +626,7 @@ resetEnv<-function(){
 #' @examples
 #' # Set parameters in command line.
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(
-#'                 dimension="1D",binwidth1D=0.01,tryParallel=FALSE,
+#'                 dimension="1D",binwidth1D=0.01,tryParallel=TRUE,
 #'                 signal_to_noise1D=25,noiseThreshold=0.75,
 #'                 NMRfolders=c(
 #'                 system.file("extdata/1/10/pdata/10",package="mrbin"),
@@ -943,10 +943,13 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                             plotTitle=paste("Bin region\n",binRegionText,
                             sep=""))
                     }
-                    adjRegion<-utils::select.list(c(paste("Keep: ",binRegionText,collapse=""),
-                               "Change..."),preselect=paste("Use ",binRegionText,collapse=""),
+					adjRegionPreselect<-paste("Keep: ",binRegionText,collapse="")
+                    adjRegion<-utils::select.list(c(adjRegionPreselect,
+                               "Change..."),preselect=adjRegionPreselect,
                                title ="Bin region [ppm]: ",graphics=TRUE)
-                    if(length(adjRegion)==0|adjRegion=="") stopTMP<-TRUE
+                    if(length(adjRegion)==0){stopTMP<-TRUE}else{
+					  if(adjRegion==""){stopTMP<-TRUE}
+					}
                     if(!stopTMP){
                       if(adjRegion=="Change..."&!stopTMP){
                         regionTMP<-readline(prompt=paste("New left border, press enter to keep ",
@@ -1697,12 +1700,12 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
             removeAreaListTMP<-""
             adjbinRegion<-""
             addbinRegion<-""
-            sumBins<-utils::select.list(c("Merge bins of unstable peaks (e.g. citrate)","No","Go back"),
+            sumBins<-utils::select.list(c("Yes","No","Go back"),
                                  preselect=mrbin.env$mrbin$parameters$sumBins,
                                  title = "Merge bins of unstable peaks?",graphics=TRUE)
             if(length(sumBins)==0|sumBins=="") stopTMP<-TRUE
             if(!stopTMP&!sumBins=="Go back"){
-              if(sumBins=="Merge bins of unstable peaks (e.g. citrate)"){
+              if(sumBins=="Yes"){#"Merge bins of unstable peaks (e.g. citrate)"
                 mrbin.env$mrbin$parameters$sumBins<-"Yes"
               } else {
                 mrbin.env$mrbin$parameters$sumBins<-sumBins
@@ -1936,7 +1939,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
               mrbin.env$mrbin$parameters$useAsNames<-NamesDictTMP[useAsNames]
             }
             if(!stopTMP&useAsNames=="Go back"){
-               selectStep<-selectStep-2
+               selectStep<-selectStep-3#-2 would lead to HSQC cropping, which is not always available
             }
             if(!stopTMP) selectStep<-selectStep+1
           }
@@ -1987,7 +1990,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                 }
                 PCAtitlelength<-utils::select.list(names(TitleListTMP2),
                                   preselect = names(TitleListTMP2)[TitleListTMP4==as.character(mrbin.env$mrbin$parameters$PCAtitlelength)],
-                                  title = "Crop titles for plot?",graphics=TRUE)
+                                  title = "Shorten titles for plot?",graphics=TRUE)
                 if(length(PCAtitlelength)==0|PCAtitlelength=="") stopTMP<-TRUE
                 if(!stopTMP&!PCAtitlelength=="Go back"){
                   if(TitleListTMP2[PCAtitlelength]=="All"){
@@ -2065,10 +2068,12 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                      }
                      parentFolder<-selectList
                    }
-                   filenameTMP<-utils::select.list(c(paste("mrbin_",gsub(":","-",gsub(" ","_",Sys.Date())),
-                               sep=""),"Change..."),
+				   filenameTMPpreselect<-paste("mrbin_",gsub(":","-",gsub(" ","_",Sys.Date())),sep="")
+                   filenameTMP<-utils::select.list(c(filenameTMPpreselect,"Change..."),preselect=filenameTMPpreselect,
                                title ="Output file name: ",graphics=TRUE)
-                   if(length(filenameTMP)==0|filenameTMP=="") stopTMP<-TRUE
+                   if(length(filenameTMP)==0){stopTMP<-TRUE}else{
+				     if(filenameTMP=="") stopTMP<-TRUE
+				   }
                    if(!stopTMP){
                     if(filenameTMP=="Change..."&!stopTMP){
                       filenameTMP<-readline(prompt=paste("New file name, press enter to use ",
@@ -2175,13 +2180,18 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                  message("Hint: Review plots for data quality. If issues are present, such as phasing\nor baseline issues, fix the spectra, e.g. in Topspin, then run mrbin again")
                  utils::flush.console()
                 }
-                plotReview<-utils::select.list(c("I will fix issues, if any, and then run mrbin again",
-                                                 "I have fixed all spectrum issues and wish to continue",
-                                                 "I would like to restart to adjust parameters"),
-                                         preselect="I will fix issues, if any, and then run mrbin again",
+				plotReviewPreselect<-"Quit now, so I can review for any issues, and then run mrbin again"
+                plotReviewStartOver<-"I would like to start over to adjust parameters"
+				plotReview<-utils::select.list(c(plotReviewPreselect,
+                                                 "I reviewed for any issues and wish to continue",
+                                                 plotReviewStartOver),
+                                         preselect=plotReviewPreselect,
                                          title="Please review data for quality issues",graphics=TRUE)
-                if(length(plotReview)==0|plotReview==""|plotReview=="I will fix issues, if any, and then run mrbin again") stopTMP<-TRUE
-                if(!stopTMP&plotReview=="I would like to restart to adjust parameters"){
+                if(length(plotReview)==0|plotReview==""|plotReview==plotReviewPreselect){
+ 				  stopTMP<-TRUE
+				  warning("No output was generated. Please review output and restart mrbin.")
+				}
+                if(!stopTMP&plotReview==plotReviewStartOver){
                   restart<-TRUE
                   selectStep<--4#start from beginning
                 }
@@ -2195,15 +2205,17 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
                    message("Hint: Run warnings(), fix issues if possible, then run mrbin again\n")
                    utils::flush.console()
                  }
-                 listWarningTMP<-c("I will check warnings() and then run mrbin again",
+				 listWarningPreselect<-"I will check warnings() and then run mrbin again"
+				 plotReviewStartOver<-"I would like to start over to adjust parameters"
+                 listWarningTMP<-c(listWarningPreselect,
                                    "I have fixed all issues and wish to continue",
-                                   "I would like to restart to adjust parameters")
+                                   plotReviewStartOver)
                  plotReview<-utils::select.list(listWarningTMP,
-                                           preselect="I will check warnings() and then run mrbin again",
+                                           preselect=listWarningPreselect,
                                            title="There were warning messages",graphics=TRUE)
-                 if(length(plotReview)==0|plotReview==""|plotReview=="I will check warnings() and then run mrbin again") stopTMP<-TRUE
+                 if(length(plotReview)==0|plotReview==""|plotReview==listWarningPreselect) stopTMP<-TRUE
                 }
-                if(!stopTMP&plotReview=="I would like to restart to adjust parameters"){
+                if(!stopTMP&plotReview==plotReviewStartOver){
                   selectStep<--4#start from beginning
                   restart<-TRUE
                 }
@@ -2417,7 +2429,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL){
 #' @examples
 #' resetEnv()
 #' setParam(parameters=list(dimension="2D",binwidth2D=0.1,binheight=5,
-#'    binRegion=c(8,1,15,140),PQNScaling="No",tryParallel=FALSE,
+#'    binRegion=c(8,1,15,140),PQNScaling="No",tryParallel=TRUE,
 #'    fixNegatives="No",logTrafo="No",signal_to_noise2D=10,solventRegion=c(5.5,4.2),
 #'    NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
 #'                 system.file("extdata/2/12/pdata/10",package="mrbin"))))
@@ -2541,7 +2553,7 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
       if(mrbinResults$parameters$saveFiles=="Yes"){
         save(mrbinResults,file=paste(mrbinResults$parameters$outputFileName,".Rdata",sep=""))
         dput(mrbinResults$parameters, file = paste(mrbinResults$parameters$outputFileName,".txt",sep=""))
-        #utils::write.csv(mrbinResults$bins,file=paste(mrbinResults$parameters$outputFileName,"bins.csv",sep=""))
+        utils::write.csv(mrbinResults$bins,file=paste(mrbinResults$parameters$outputFileName,"bins.csv",sep=""))
       }
        resultOutputTMP<-c("\nNumber of spectra: ",nrow(mrbinResults$bins),"\n",
            "Number of bins at start: ",mrbinResults$parameters$numberOfFeaturesRaw,"\n")
@@ -2603,7 +2615,7 @@ mrbinrun<-function(createbins=TRUE,process=TRUE,mrbinResults=NULL,silent=TRUE){
 #'                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
 #'                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
 #'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
-#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
+#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=TRUE,
 #'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                               system.file("extdata/3/10/pdata/10",package="mrbin"))
 #'                    ))
@@ -2675,7 +2687,7 @@ setDilutionFactors<-function(mrbinObject,dilutionFactors=NULL,
 #'                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
 #'                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
 #'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
-#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
+#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=TRUE,
 #'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                               system.file("extdata/3/10/pdata/10",package="mrbin"))
 #'                    ))
@@ -3139,7 +3151,7 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
         }
         try(dev.off(),silent=TRUE)
         graphics::plot(thresholdValuesTMP,nBins,type="l",main="Noise threshold preview",
-          xlab="(More noise)                                                                      (Less noise)\nNoise threshold",
+          xlab="(More noise)                                                       (Less noise)\nNoise threshold",
           ylab="Number of bins after noise removal",bg="white",
           xlim=c(0,1),ylim=c(.96*min(nBins),1.04*max(nBins)))
         graphics::abline(h=ncol(mrbinObject$bins),col="blue",lty=2)
@@ -3186,7 +3198,7 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
 #'                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
 #'                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
 #'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
-#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
+#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=TRUE,
 #'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                               system.file("extdata/3/10/pdata/10",package="mrbin"))
 #'                    ))
@@ -3714,7 +3726,7 @@ setParam<-function(parameters=NULL,metadata=NULL){
 #' @examples
 #' resetEnv()
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D", logTrafo="No",
-#'                     binwidth1D=0.05,signal_to_noise1D=50,verbose=TRUE,PCA="No",tryParallel=FALSE,
+#'                     binwidth1D=0.05,signal_to_noise1D=50,verbose=TRUE,PCA="No",tryParallel=TRUE,
 #'                     NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                                 system.file("extdata/2/10/pdata/10",package="mrbin"))))
 #' mrbinResults<-logTrafo(mrbinResults)
@@ -3785,7 +3797,7 @@ setCurrentSpectrum<-function(spectrumNumber=NULL){
 #' @export
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
-#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=FALSE,logTrafo="No",
+#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=TRUE,logTrafo="No",
 #'          noiseRemoval="No",
 #'          NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                       system.file("extdata/2/10/pdata/10",package="mrbin"),
@@ -4082,7 +4094,7 @@ selectBrukerFolders<-function(keep=FALSE){#Select Bruker NMR spectral folders
                  yesornoPreSelect<-paste("Keep current spectra list (",length(mrbin.env$mrbin$parameters$NMRfolders)," spectra)",sep="")
                  yesorno<-utils::select.list(c(yesornoPreSelect,"Add additional spectra","Remove spectra from list"),
                            preselect=yesornoPreSelect,multiple=FALSE,title="Add additional spectra?",graphics=TRUE)
-                 if(yesorno==""){
+                 if(is.null(yesorno)|yesorno==""){
                      addSpectrumTMP<-FALSE
                  }
                  if(yesorno=="Add additional spectra"){
@@ -4775,7 +4787,7 @@ removeAreas<-function(){#limits=c(4.75,4.95,-10,160)
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D", logTrafo="No",
 #'                     binwidth1D=0.05,signal_to_noise1D=50, verbose=TRUE, PCA="No",
-#'                       trimZeros="No",tryParallel=FALSE,
+#'                       trimZeros="No",tryParallel=TRUE,
 #'                     NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                                 system.file("extdata/2/10/pdata/10",package="mrbin"))))
 #' mrbinResults<-trimZeros(mrbinResults)
@@ -4796,7 +4808,7 @@ trimZeros<-function(mrbinResults){
     warning("Too few samples for zero trimming.")
   }
    #mrbin.env$mrbin$parameters$numberOfFeaturesAfterTrimmingZeros<-ncol(mrbinResults$bins)
-   mrbinResultsTMP$parameters$numberOfFeaturesAfterTrimmingZeros<-ncol(mrbinResults$bins)
+   mrbinResultsTMP$parameters$numberOfFeaturesAfterTrimmingZeros<-ncol(mrbinResultsTMP$bins)
    mrbinResults<-editmrbin(mrbinObject=mrbinResults,functionName="mrbin::trimZeros",
        versionNumber=as.character(utils::packageVersion("mrbin")),
        bins=mrbinResultsTMP$bins, parameters=mrbinResultsTMP$parameters,verbose=FALSE,
@@ -4817,7 +4829,7 @@ trimZeros<-function(mrbinResults){
 #' @export
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
-#'                     binwidth1D=0.05,noiseRemoval="No",PQNScaling="No",tryParallel=FALSE,
+#'                     binwidth1D=0.05,noiseRemoval="No",PQNScaling="No",tryParallel=TRUE,
 #'                     fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'                     NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                                 system.file("extdata/2/10/pdata/10",package="mrbin"),
@@ -4936,7 +4948,7 @@ checkBaseline<-function(NMRdata=NULL,dimension="1D",currentSpectrumName=NULL,
 #' resetEnv()
 #' Example<-mrbin(silent=TRUE,
 #'          parameters=list(dimension="2D",binwidth2D=1,binheight=4,cropHSQC="No",PCA="No",
-#'          PQNScaling="No",noiseRemoval="No",removeSolvent="No",verbose=TRUE,tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",removeSolvent="No",verbose=TRUE,tryParallel=TRUE,
 #'          NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"))))
 #' cropNMR()
 
@@ -4984,7 +4996,7 @@ if(nrow(mrbin.env$mrbin$parameters$binRegions)>1){
 #' @export
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
-#'                     binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=FALSE,logTrafo="No",
+#'                     binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=TRUE,logTrafo="No",
 #'                     NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                                 system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                                 system.file("extdata/3/10/pdata/10",package="mrbin"))))
@@ -5133,7 +5145,7 @@ PQNScaling<-function(NMRdata,ignoreGlucose="Yes",dimension="1D",
 #' @export
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
-#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=FALSE,logTrafo="No",
+#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=TRUE,logTrafo="No",
 #'          NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                       system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                       system.file("extdata/3/10/pdata/10",package="mrbin"))),
@@ -5183,7 +5195,7 @@ dilutionCorrection<-function(mrbinResults,verbose=TRUE,errorsAsWarnings=FALSE){
 #' @export
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",
-#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=FALSE,logTrafo="No",
+#'          binwidth1D=0.05,PQNScaling="No",PCA="No",tryParallel=TRUE,logTrafo="No",
 #'          NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                       system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                       system.file("extdata/3/10/pdata/10",package="mrbin"))))
@@ -5231,7 +5243,7 @@ unitVarianceScaling<-function(mrbinResults,verbose=TRUE,errorsAsWarnings=FALSE){
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=FALSE,parameters=list(dimension="2D",
 #'     binRegion=c(8,1,15,140),binwidth2D=0.1,binheight=4,solventRegion=c(5.5,4.2),
-#'     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",tryParallel=FALSE,
+#'     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",tryParallel=TRUE,
 #'     fixNegatives="No",logTrafo="No",PCA="No",signal_to_noise2D=10,
 #'     NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
 #'                  system.file("extdata/2/12/pdata/10",package="mrbin"))))
@@ -5309,9 +5321,11 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
              xlab=xlabTMP,
              ylab=ylabTMP,
              cex=.75, ask=FALSE)
-        graphics::text(PCA$x,labels=paste(substr(rownames(PCA$x),1,
-          mrbinResults$parameters$PCAtitlelength)),pos=3,cex=1,
+	    if(annotate){
+          graphics::text(PCA$x,labels=paste(substr(rownames(PCA$x),1,
+            mrbinResults$parameters$PCAtitlelength)),pos=3,cex=1,
                col=colorPalette[PCAFactors])
+		}
           if(defineGroups) graphics::legend(legendPosition,
                   legend=levels(FactorsTMP),
                   col=colorPalette[numlevels],pch=numlevels2,cex=1,bg=NULL)#"white"
@@ -5337,7 +5351,7 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
 #' @examples
 #' mrbinResults<-mrbin(silent=TRUE,setDefault=FALSE,parameters=list(dimension="2D",
 #'     binRegion=c(8,1,15,140),binwidth2D=0.2,binheight=4,solventRegion=c(5.5,4.2),
-#'     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",tryParallel=FALSE,
+#'     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",tryParallel=TRUE,
 #'     fixNegatives="No",logTrafo="No",PCA="No",signal_to_noise2D=10,
 #'     NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
 #'                  system.file("extdata/2/12/pdata/10",package="mrbin"))))
@@ -5473,7 +5487,7 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
 #' @export
 #' @examples
 #' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' plotNMR()
@@ -5794,7 +5808,7 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 #' @export
 #' @examples
 #' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' plotNMR()
@@ -5820,7 +5834,7 @@ intPlus<-function(dimension="1D",refreshPlot=TRUE){#increase plot intensity
 #' @export
 #' @examples
 #' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' plotNMR()
@@ -5876,7 +5890,7 @@ contPlus<-function(refreshPlot=TRUE){#decrease plot intensity
 #' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="2D",binwidth2D=0.5,
 #'          binheight=3,PQNScaling="No",referenceScaling="No",binRegion=c(4,3,60,65),
-#'          noiseRemoval="No",trimZeros="No",cropHSQC="No",tryParallel=FALSE,
+#'          noiseRemoval="No",trimZeros="No",cropHSQC="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,saveFiles="No",
 #'          NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"))))
 #' plotNMR()
@@ -5902,7 +5916,7 @@ contMin<-function(refreshPlot=TRUE){#decrease plot intensity
 #' @export
 #' @examples
 #' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' plotNMR()
@@ -5950,7 +5964,7 @@ zoom<-function(left=NULL,right=NULL,top=NULL,bottom=NULL,refreshPlot=TRUE){
 #' @export
 #' @examples
 #' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' plotNMR()
@@ -6010,7 +6024,7 @@ zoomIn<-function(refreshPlot=TRUE,x=TRUE,y=TRUE){#Zoom into NMR spectrum plot
 #' @export
 #' @examples
 #' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' plotNMR()
@@ -6086,7 +6100,7 @@ setOffset<-function(offsetValue=NULL){
 #' @examples
 #' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="1D",binwidth1D=.5,
-#'          noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          PQNScaling="No",saveFiles="No",referenceScaling="No",
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
@@ -6127,7 +6141,7 @@ left<-function(refreshPlot=TRUE){
 #' @examples
 #' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="1D",binwidth1D=.5,
-#'          noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          PQNScaling="No",saveFiles="No",referenceScaling="No",
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
@@ -6169,7 +6183,7 @@ right<-function(refreshPlot=TRUE){
 #' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="2D",binwidth2D=0.5,
 #'          binheight=3,PQNScaling="No",referenceScaling="No",binRegion=c(4,3,60,65),
-#'          noiseRemoval="No",trimZeros="No",cropHSQC="No",tryParallel=FALSE,
+#'          noiseRemoval="No",trimZeros="No",cropHSQC="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,saveFiles="No",
 #'          NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"))))
 #' plotNMR()
@@ -6203,7 +6217,7 @@ down<-function(refreshPlot=TRUE){
 #' resetEnv()
 #' mrbin(silent=TRUE,parameters=list(dimension="2D",binwidth2D=0.5,
 #'          binheight=3,PQNScaling="No",referenceScaling="No",binRegion=c(4,3,60,65),
-#'          noiseRemoval="No",trimZeros="No",cropHSQC="No",tryParallel=FALSE,
+#'          noiseRemoval="No",trimZeros="No",cropHSQC="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,saveFiles="No",
 #'          NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"))))
 #' plotNMR()
@@ -6549,7 +6563,7 @@ readBruker<-function(folder=NULL,dimension=NULL,onlyTitles=FALSE,
 #' @examples
 #' \donttest{
 #' resetEnv()
-#' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",tryParallel=FALSE,
+#' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",tryParallel=TRUE,
 #'          referenceScaling="No",binwidth1D=0.05,PQNScaling="No",PCA="No",
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' referenceScaling()
@@ -6984,7 +6998,7 @@ checkmrbin<-function(mrbinObject,verbose=TRUE,errorsAsWarnings=NULL){
 #'                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
 #'                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
 #'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
-#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
+#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=TRUE,
 #'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                               system.file("extdata/3/10/pdata/10",package="mrbin"))
 #'                    ))
@@ -7034,7 +7048,7 @@ editmetabolitesmrbin<-function(mrbinObject,borders,metabolitenames,add=TRUE){ #D
 #'                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
 #'                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
 #'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
-#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
+#'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=TRUE,
 #'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                               system.file("extdata/3/10/pdata/10",package="mrbin"))),
 #'                    metadata=list(metaboliteIdentities=matrix(c(
@@ -7374,7 +7388,7 @@ calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
 #' @export
 #' @examples
 #' mrbin(silent=TRUE,setDefault=TRUE,parameters=list(dimension="1D",binwidth1D=.1,
-#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=FALSE,
+#'          PQNScaling="No",noiseRemoval="No",trimZeros="No",tryParallel=TRUE,
 #'          fixNegatives="No",logTrafo="No",PCA="No",verbose=TRUE,
 #'          NMRfolders=system.file("extdata/1/10/pdata/10",package="mrbin")))
 #' plotMultiNMR()

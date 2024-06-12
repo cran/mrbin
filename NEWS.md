@@ -1,5 +1,14 @@
 # mrbin News
 
+## Version 1.7.5
+
+* mrbin: Bug fixes especially for plots in (Mac) RStudio
+* mrbin: The number of bins left after trimming zero-value bins was displayed incorrectly during an mrbin run, this is now fixed
+* mrbin: All function examples now use parallel computing by default for consistency
+* mrbin: Small bug fixes and clarifications of prompts and reply options
+* mrbin: Bin data is now additionally saved as a csv file to disk (again)
+
+
 ## Version 1.7.4
 
 * mrbin: Bugfixes especially for plots in (Mac) RStudio

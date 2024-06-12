@@ -22,7 +22,7 @@ This function edits interactively or non-interactively the metadata filed of the
                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
-                   fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=FALSE,
+                   fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=TRUE,
                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
                               system.file("extdata/3/10/pdata/10",package="mrbin"))
                    ))
