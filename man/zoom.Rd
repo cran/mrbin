@@ -4,7 +4,14 @@
 \alias{zoom}
 \title{A function for changing plotNMR plots.}
 \usage{
-zoom(left = NULL, right = NULL, top = NULL, bottom = NULL, refreshPlot = TRUE)
+zoom(
+  left = NULL,
+  right = NULL,
+  top = NULL,
+  bottom = NULL,
+  refreshPlot = TRUE,
+  dimension = "2D"
+)
 }
 \arguments{
 \item{left}{New left boundary}
@@ -16,9 +23,11 @@ zoom(left = NULL, right = NULL, top = NULL, bottom = NULL, refreshPlot = TRUE)
 \item{bottom}{New bottom boundary}
 
 \item{refreshPlot}{Refresh plot automatically. Defaults to TRUE}
+
+\item{dimension}{Dimension of the data. Defaults to "2D"}
 }
 \value{
-{None}
+An invisible value indicating if a change occurred
 }
 \description{
 This function changes the plot region of the current NMR plot. Can be called with

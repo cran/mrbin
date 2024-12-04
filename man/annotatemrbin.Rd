@@ -16,7 +16,7 @@ An (invisible) mrbin object
 This function annotates an mrbin object and returns it with updated $annotations vector
 }
 \examples{
- mrbinObject<-mrbin(silent=TRUE,
+ results<-mrbin(silent=TRUE,
                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
@@ -29,7 +29,7 @@ This function annotates an mrbin object and returns it with updated $annotations
                    4.066,4.059,57,59.5
                    ),ncol=4,byrow=TRUE,dimnames=list(
                    c("Lactate","Creatinine","Creatinine"),NULL))))
-mrbinObject<-annotatemrbin(mrbinObject)
-mrbinObject$metadata$annotations[125:135]
-plotPCA(mrbinObject,loadings=TRUE)
+results<-annotatemrbin(results)
+results$metadata$annotations[125:135]
+plotPCA(results,loadings=TRUE)
 }

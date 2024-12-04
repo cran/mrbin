@@ -21,7 +21,7 @@
 
 \title{mrbin}
 \author{Matthias S. Klein}
-\date{Version 1.7.5}
+\date{Version 1.8.0}
 \maketitle
 \tableofcontents
 \pagebreak
@@ -176,6 +176,7 @@ mrbinResults<-mrbin(parameters=list(dimension="1D",
              PQNScaling="No",
              fixNegatives="No",
              logTrafo="No",
+			 useAsNames="Spectrum titles",
              NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
                           system.file("extdata/2/10/pdata/10",package="mrbin"),
                           system.file("extdata/3/10/pdata/10",package="mrbin"))
@@ -197,6 +198,7 @@ mrbinResults<-mrbin(silent=TRUE,#this suppresses all interactive prompts
              PQNScaling="No",
              fixNegatives="No",
              logTrafo="No",
+			 useAsNames="Spectrum titles",
              NMRfolders=c(system.file("extdata/1/10/pdata/10",package="mrbin"),
                           system.file("extdata/2/10/pdata/10",package="mrbin"),
                           system.file("extdata/3/10/pdata/10",package="mrbin"))
@@ -415,6 +417,7 @@ mrbinResults2D<-mrbin(setDefault=TRUE,parameters=list(dimension="2D",
                PQNScaling="No",
                fixNegatives="No",
                logTrafo="No",
+			   useAsNames="Spectrum titles",
                NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
                        system.file("extdata/2/12/pdata/10",package="mrbin"),
                        system.file("extdata/3/12/pdata/10",package="mrbin"))
@@ -435,6 +438,7 @@ mrbinResults2D<-mrbin(silent=TRUE,#this suppresses all interactive prompts
                PQNScaling="No",
                fixNegatives="No",
                logTrafo="No",
+			   useAsNames="Spectrum titles",
                NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
                        system.file("extdata/2/12/pdata/10",package="mrbin"),
                        system.file("extdata/3/12/pdata/10",package="mrbin"))
@@ -442,8 +446,8 @@ mrbinResults2D<-mrbin(silent=TRUE,#this suppresses all interactive prompts
 @
 
 ~\\
-The used approximate signal-to-noise levels will be visually plotted and saved
-for up to three selected spectra:\\
+The approximate signal-to-noise levels are plotted 
+for up to three selected spectra. This plot will also be saved as a pdf file.\\
 
 <<fig=TRUE,echo=FALSE,hide=FALSE, pdf=FALSE, png=TRUE>>=
 setNoiseLevels(mrbinResults2D,plotOnly=TRUE)
@@ -634,7 +638,20 @@ In mrplot, multiple spectra shown overlaid. If both 1D and 2D spectra are added,
 both are shown in region-matched plots, e.g. for metabolite identification
 purposes.\\
 
-To use the more basic commands, you need to first load one NMR spectrum:
+Parameters and folder names can passed to mrplot on the command line, as follows:\\
+
+<<fig=TRUE, pdf=FALSE, png=TRUE>>=
+mrplot(folders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
+                  system.file("extdata/1/10/pdata/10",package="mrbin"),
+                  system.file("extdata/2/10/pdata/10",package="mrbin"),
+                  system.file("extdata/3/10/pdata/10",package="mrbin")),
+        dimensions=c("2D","1D","1D","1D"),zoom=c(2.8,2.4,20,55),
+        highlight=c(2.564,2.537),
+        intensity1D=32,hideMenu=TRUE)
+@
+
+Instead of using mrplot, basic NMR plotting commands are available. To use these, 
+you need to first load one NMR spectrum:
 
 <<eval=FALSE>>=
 readBruker(dimension="1D",
@@ -695,7 +712,7 @@ is different, the function name has to be provided in the parameter
 functionNamePredict. Please make sure to have loaded all required packages
 before starting fia().\\
 
-As an example, we will a logit model instead of ANN, as ANN training would
+As an example, we will use a logit model instead of ANN, as ANN training would
 require additional programs to be installed.
 
 <<eval=FALSE>>=
@@ -721,25 +738,38 @@ fiaresults$scores
 
 \section{Known Issues}
 
-\subsection{Firewall Warnings}
-If parallel computing is turned on and the package parallel is installed,
-mrbin will try to use the socket approach for computing. This requires
-establishing network connections to the local cluster, which might
-trigger the firewall. It is safe to unblock these connections.\\
+\subsection{Linux tcl Issues}
+In rare cases, the following error (or similar) might occur while navigating 
+pop-up selections in mrbin or mrplot: 
 
-\subsection{Pop-Up Windows}
-mrbin is set up to ask for user input through pop-up windows. This requires
-graphics support, otherwise the user input will be asked through command line
-menus, which is less user friendly but still offers the full functionality.\\
+tcl grab failed: window not viewable.\\
 
-\subsection{Apple/Mac Computers And RStudio}
-In some cases, running mrbin from within RStudio on Apple computers will not
+This issue seems to be related to tcl handling of select.list pop-up windows.
+It can potentially be avoided by avoiding double-clicking inside the pop-up 
+windows, instead selecting the desired option with a single click and then clicking 
+OK. To stop the error message from occuring, try to close all plot windows 
+and pop-up windows. It might be helpful to create a new plot window, e.g. by 
+example(mrbin), and then closing the new plot window.
+To avoid pop-up windows altogether, use mrbin(graphics=FALSE). 
+
+\subsection{Pop-up Windows Missing on Apple Computers, RStudio}
+In some cases, running mrbin on Apple computers and/or within RStudio will not
 generate pop-up windows. To enable pop-up windows, it might be helpful to install
 the newest version of xquartz from https://www.xquartz.org.\\
 
+\subsection{Pop-Up Windows}
+mrbin is set up to ask for user input through pop-up windows. This requires
+graphics support. If graphics support is not enabled on your system, user 
+input will be asked through command line prompts, which offers the full functionality.\\
+
+\subsection{Firewall Warnings}
+mrbin will try to use the socket approach for parallel computing. This requires
+establishing network connections to the local cluster, which might
+trigger the firewall. It is safe to unblock these connections.\\
+
 \subsection{Spectra are Missing}
 If a Bruker spectrum is not shown during browsing, please make sure a file
-with filename title is present in the PROCNO folder of that spectrum. You
+named title is present in the PROCNO folder of that spectrum. You
 can create a title file by opening the spectrum in Bruker Topspin, selecting
 the Title tab, entering a title and clicking the disk symbol for saving.\\
 

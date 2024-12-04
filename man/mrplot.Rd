@@ -9,7 +9,15 @@ mrplot(
   folders = NULL,
   dimensions = NULL,
   intensity1D = NULL,
-  zoom = NULL
+  zoom = NULL,
+  color = NULL,
+  background = NULL,
+  lwd = 1,
+  plotTitle = "",
+  showNames = "Spectrum titles",
+  graphics = TRUE,
+  highlight = NULL,
+  ...
 )
 }
 \arguments{
@@ -22,6 +30,22 @@ mrplot(
 \item{intensity1D}{Optional value of initial 1D intensity. Defaults to NULL}
 
 \item{zoom}{Optional vector of initial zoom area. Defaults to NULL}
+
+\item{color}{Defines the color of the spectrum plot. If NULL, a rainbow theme is used for 2D NMR}
+
+\item{background}{Background color, defaults to NULL (no background fill, usually results in a white background)}
+
+\item{lwd}{Line width, defaults to 1}
+
+\item{plotTitle}{Plot title, defaults to "" (empty)}
+
+\item{showNames}{Display list of spectrum titles in plot, defaults to "Spectrum titles". Other options are "" and "Folder names"}
+
+\item{graphics}{Controls whether pop-up windows are shown for selections. Defaults to TRUE.}
+
+\item{highlight}{A vector of up to 2 frequencies that will be highlighted in the plot. If 2 values are provided the distance in Hz is shown as well. Defaults to NULL.}
+
+\item{...}{Additional graphical parameters that will be passed to the functions plot, lines, and/or contour}
 }
 \value{
 {None}
@@ -37,6 +61,7 @@ mrplot(folders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
                  system.file("extdata/1/10/pdata/10",package="mrbin"),
                  system.file("extdata/2/10/pdata/10",package="mrbin"),
                  system.file("extdata/3/10/pdata/10",package="mrbin")),
-       dimensions=c("2D","1D","1D","1D"),zoom=c(2.8,2.3,20,55),
+       dimensions=c("2D","1D","1D","1D"),zoom=c(2.8,2.4,20,55),
+       highlight=c(2.564,2.537),
        intensity1D=32,hideMenu=TRUE)
 }

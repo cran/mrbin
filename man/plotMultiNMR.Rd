@@ -7,22 +7,32 @@
 plotMultiNMR(
   region = NULL,
   rectangleRegions = NULL,
-  rectangleColors = c("green", "orange", "blue", "red", "yellow", "gray", "purple"),
+  rectangleColors = c("darkseagreen3", "orange", "blue", "red", "yellow", "gray",
+    "purple"),
   rectangleFront = FALSE,
+  correctOffset2D = TRUE,
   polygonRegion = NULL,
   maxPlots = Inf,
+  setContours = TRUE,
   color = NULL,
   add = FALSE,
   showGrid = FALSE,
+  buffer = TRUE,
   manualScale = TRUE,
   plotTitle = "",
+  renewSpectrum = TRUE,
   restrictToRange = FALSE,
   enableSplit = TRUE,
-  dimension = NULL
+  dimension = NULL,
+  lwd = 1,
+  background = NULL,
+  titles = NULL,
+  plotCurrent = TRUE,
+  ...
 )
 }
 \arguments{
-\item{region}{A vector defining the plot region (left, right, top, bottom)}
+\item{region}{A vector defining the plot region (left, right, top, bottom) or "all" for the whole spectrum}
 
 \item{rectangleRegions}{A 4-column matrix defining areas where to plot rectangles}
 
@@ -30,9 +40,13 @@ plotMultiNMR(
 
 \item{rectangleFront}{Plot rectangles in front of spectrum rather than in background (only 2D)}
 
+\item{correctOffset2D}{Do a basic offset correction so 2D spectra have a baseline close to 0. Defaults to TRUE}
+
 \item{polygonRegion}{Defines 4 corners of a polygon to be plotted}
 
 \item{maxPlots}{The maximum number of 2D plots to be overlaid}
+
+\item{setContours}{Should upper and lower contour levels be calculated of the old ones be reused? Default: TRUE}
 
 \item{color}{Defines the color of the spectrum plot. If NULL, a rainbow theme is used for 2D NMR}
 
@@ -40,15 +54,29 @@ plotMultiNMR(
 
 \item{showGrid}{Shows a grid of data points. Defaults to FALSE}
 
+\item{buffer}{Speed up plotting by loading a plot. Defaults to TRUE}
+
 \item{manualScale}{If TRUE, scaling factor is taken from environment variables}
 
 \item{plotTitle}{Defines the main title of the plot}
+
+\item{renewSpectrum}{Should a new size-reduced spectrum for quicker plotting be calculated, or can the old one be used? Default: TRUE}
 
 \item{restrictToRange}{Restrict plot area to range of available data points. Defaults to FALSE}
 
 \item{enableSplit}{Allow split plots for showing 1D and 2D spectra simultaneously}
 
 \item{dimension}{If not provided, this will be taken from package environment}
+
+\item{lwd}{Line width, defaults to 1}
+
+\item{background}{Background color, defaults to NULL (no background fill, usually results in a white background)}
+
+\item{titles}{Display list of spectrum titles in plot, defaults to NULL}
+
+\item{plotCurrent}{Should the first (current) spectrum in the list be plotted, defaults to TRUE}
+
+\item{...}{Additional graphical parameters that will be passed to the functions plot, lines, and/or contour}
 }
 \value{
 {None}

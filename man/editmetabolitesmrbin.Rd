@@ -22,7 +22,7 @@ An (invisible) mrbin object
 This function edits the metabolite list within an mrbin object and returns it
 }
 \examples{
- mrbinObject<-mrbin(silent=TRUE,
+ results<-mrbin(silent=TRUE,
                    parameters=list(verbose=TRUE,dimension="1D",PQNScaling="No",
                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
@@ -30,7 +30,7 @@ This function edits the metabolite list within an mrbin object and returns it
                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
                               system.file("extdata/3/10/pdata/10",package="mrbin"))
                    ))
- mrbinObject<-editmetabolitesmrbin(mrbinObject,borders=matrix(c(
+ results<-editmetabolitesmrbin(results,borders=matrix(c(
      1.346,1.324,
      3.052,3.043,
      4.066,4.059
@@ -39,5 +39,5 @@ This function edits the metabolite list within an mrbin object and returns it
    "Creatinine",
    "Creatinine"
    ))
-mrbinObject$parameters$metaboliteIdentities
+results$parameters$metaboliteIdentities
 }
