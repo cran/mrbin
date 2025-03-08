@@ -1,5 +1,18 @@
 # mrbin News
 
+## Version 1.9.0
+
+* mrbin: Nicer and speedier plots
+* mrbin: Improved bin annotation system
+* mrplot: A vector of mrbin bin names can now be provided to mrplot and the bin positions will be highlighted
+* mrplot: Small bugfixes
+* mrbin: Small bugfixes
+* mrbin: Clarifications of prompts and reply options
+* mrbin: Clarifications in the vignette
+* mrheatmap: New function for heatmaps
+* examples: A new data set was included for better example results
+
+
 ## Version 1.8.0
 
 * mrbin: Speed improvements

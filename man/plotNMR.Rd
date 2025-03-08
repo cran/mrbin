@@ -9,6 +9,7 @@ plotNMR(
   rectangleRegions = NULL,
   rectangleColors = c("darkseagreen3", "orange", "blue", "red", "yellow", "gray",
     "purple"),
+  density = NULL,
   rectangleFront = FALSE,
   polygonRegion = NULL,
   color = NULL,
@@ -23,6 +24,7 @@ plotNMR(
   currentSpectrumOriginal = NULL,
   spectrumTMP = NULL,
   renewSpectrum = TRUE,
+  cex.axis = 0.7,
   perspective = FALSE,
   noise = NULL,
   dimension = NULL,
@@ -38,6 +40,8 @@ plotNMR(
 \item{rectangleRegions}{A 4-column matrix defining areas where to plot rectangles}
 
 \item{rectangleColors}{Define colors for the rectangles}
+
+\item{density}{Shading lines for the rectangles}
 
 \item{rectangleFront}{Plot rectangles in front of spectrum rather than in background (only 2D)}
 
@@ -66,6 +70,8 @@ plotNMR(
 \item{spectrumTMP}{A size-reduced spectrum for quicker plotting. Defaults to NULL}
 
 \item{renewSpectrum}{Should a new size-reduced spectrum for quicker plotting be calculated, or can the old one be used? Default: TRUE}
+
+\item{cex.axis}{Font size of axis tick labels.}
 
 \item{perspective}{If TRUE, a perspective plot will be displayed for 2D data instead of the regular topographic view}
 

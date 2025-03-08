@@ -38,7 +38,7 @@ NULL
 #' \donttest{ .onAttach() }
 
 .onAttach <- function(libname, pkgname){
-    packageStartupMessage("mrbin 1.8.0\nFor instructions and examples, please type: vignette('mrbin')")
+    packageStartupMessage("mrbin 1.9.0\nFor instructions and examples, please type: vignette('mrbin')")
 }
 
 
@@ -549,6 +549,7 @@ resetEnv<-function(){
                medians=NULL,
                noise_level_TMP=NULL,
                noise_level_Raw_TMP=NULL,
+			   baseline=NULL,
                meanNumberOfPointsPerBin=NULL,
                meanNumberOfPointsPerBin_TMP=NULL,
                #PCA=NULL,
@@ -844,15 +845,17 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL,grap
                     } else {
                       nextTMP<-"Spectrum quality is adequate, continue"
                     }
-                    previewTMP2List<-c(previewTMP2List,nextTMP)
+                    previewTMP2List<-c(previewTMP2List,nextTMP,"Spectrum quality is not adequate, quit to fix issues")
                     if(ipreviewTMP>1) previewTMP2List<-c(previewTMP2List,"Show previous spectrum")
                     previewTMP2List<-c(previewTMP2List,"Skip review")
                     previewTMP2<-utils::select.list(previewTMP2List,
                        preselect=nextTMP,
                        ,title =paste("Spectrum ",ipreviewTMP," quality adequate?",sep=""),graphics=graphics)
                     if(length(previewTMP2)==0|previewTMP2==""){
-                      ipreviewTMP<-length(mrbin.env$mrbin$parameters$NMRfolders)+1
+					  stopTMP<-TRUE
+                      #ipreviewTMP<-length(mrbin.env$mrbin$parameters$NMRfolders)+1
                     } else {
+					  if(previewTMP2=="Spectrum quality is not adequate, quit to fix issues") stopTMP<-TRUE
                       if(previewTMP2==nextTMP) ipreviewTMP<-ipreviewTMP+1
                       if(previewTMP2=="Show previous spectrum") ipreviewTMP<-ipreviewTMP-1
                       if(previewTMP2=="Skip review") ipreviewTMP<-length(mrbin.env$mrbin$parameters$NMRfolders)+1
@@ -1194,7 +1197,7 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL,grap
                   utils::flush.console()
                 }
                 if(is.null(mrbin.env$mrbin$parameters$specialBinList)){
-                        mrbin.env$mrbin$parameters$specialBinList<-matrix(ncol=4,nrow=0,dimnames=list(NULL,c("left","right","top","bottom")))
+                        mrbin.env$mrbin$parameters$specialBinList<-matrix(ncol=4,nrow=0)#,dimnames=list(NULL,c("left","right","top","bottom")))
                 }
                 ibinRegions <- 1
                 adjbinRegion<-""
@@ -1578,13 +1581,13 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL,grap
                 if(!removeAreaListTMP==preselectKeepTMP&!stopTMP&!removeAreaListTMP=="Go back"){
                   addAreasFlag<-TRUE
                   if(removeAreaListTMP=="Create new list"&!stopTMP){
-                    mrbin.env$mrbin$parameters$removeAreaList<-matrix(ncol=4,nrow=0,dimnames=list(NULL,c("left","right","top","bottom")))
+                    mrbin.env$mrbin$parameters$removeAreaList<-matrix(ncol=4,nrow=0)#,dimnames=list(NULL,c("left","right","top","bottom")))
                   }
                 }
                 if(!stopTMP){
                   if(removeAreaListTMP=="Create new list"|removeAreaListTMP=="Edit current list"){
                     if(is.null(mrbin.env$mrbin$parameters$removeAreaList)){
-                            mrbin.env$mrbin$parameters$removeAreaList<-matrix(ncol=4,nrow=0,dimnames=list(NULL,c("left","right","top","bottom")))
+                            mrbin.env$mrbin$parameters$removeAreaList<-matrix(ncol=4,nrow=0)#,dimnames=list(NULL,c("left","right","top","bottom")))
                     }
                     ibinRegions <- 1
                     adjbinRegion<-""
@@ -1777,13 +1780,13 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL,grap
                   if(!sumBinListTMP==preselectKeepTMP&!stopTMP&!sumBinListTMP=="Go back"){
                     addAreasFlag<-TRUE
                     if(sumBinListTMP=="Create new list"&!stopTMP){
-                        mrbin.env$mrbin$parameters$sumBinList<-matrix(ncol=4,nrow=0,dimnames=list(NULL,c("left","right","top","bottom")))
+                        mrbin.env$mrbin$parameters$sumBinList<-matrix(ncol=4,nrow=0)#,dimnames=list(NULL,c("left","right","top","bottom")))
                     }
                   }
                 if(!stopTMP){
                   if(sumBinListTMP=="Create new list"|sumBinListTMP=="Edit current list"){
                     if(is.null(mrbin.env$mrbin$parameters$sumBinList)){
-                            mrbin.env$mrbin$parameters$sumBinList<-matrix(ncol=4,nrow=0,dimnames=list(NULL,c("left","right","top","bottom")))
+                            mrbin.env$mrbin$parameters$sumBinList<-matrix(ncol=4,nrow=0)#,dimnames=list(NULL,c("left","right","top","bottom")))
                     }
                     ibinRegions <- 1
                     adjbinRegion<-""
@@ -2327,12 +2330,12 @@ mrbin<-function(silent=FALSE,setDefault=FALSE,parameters=NULL,metadata=NULL,grap
                   }
                   if(mrbin.env$mrbin$parameters$PQNScaling=="Yes"){
                     if(mrbin.env$mrbin$parameters$verbose){
-                      message("Hint: Improves PQN but works only for 1H and 1H-13C spectra")
+                      message("Hint: Ignoring part of the glucose peak area improves PQN results. Works only \nfor 1H and 1H-13C spectra")
                       utils::flush.console()
                     }
                     PQNScalingIgnoreSugar<-utils::select.list(c("Yes","No","Go back"),
                                             preselect=mrbin.env$mrbin$parameters$PQNIgnoreSugarArea,
-                                            title = "Ignore glucose for PQN?",graphics=graphics)
+                                            title = "Reduce impact of glucose?",graphics=graphics)
                     if(length(PQNScalingIgnoreSugar)==0|PQNScalingIgnoreSugar=="") stopTMP<-TRUE
                     if(!stopTMP&!PQNScalingIgnoreSugar=="Go back"&
                      !PQNScalingIgnoreSugar==mrbin.env$mrbin$parameters$PQNIgnoreSugarArea){
@@ -2970,7 +2973,7 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
        }
       }
 	  #try(dev.off(),silent=TRUE)
-      par(bg="white",mfrow=c(3,min(3,(1+length(mrbin.env$mrbinTMP$additionalPlots1D)))),mar=c(2,2,1.1,.2))
+      par(bg="white",mfrow=c(3,min(3,(1+length(mrbin.env$mrbinTMP$additionalPlots1D)))),mar=c(1,1.1,1.5,.2))
       for(inoiseRegionTMP in 1:nrow(mrbinObject$parameters$noisePreviewRegion1D)){
         #plot 3 different regions of 3 spectra with current S-to-N level to help with deciding
           plotTitleTMP1<-""
@@ -3065,7 +3068,7 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
        }
       }
 	  #try(dev.off(),silent=TRUE)
-      par(bg="white",mfrow=c(3,min(3,(1+length(mrbin.env$mrbinTMP$additionalPlots2D)))),mar=c(2,2,1.1,.2))
+      par(bg="white",mfrow=c(3,min(3,(1+length(mrbin.env$mrbinTMP$additionalPlots2D)))),mar=c(.5,1.1,2.5,.2))
       for(inoiseRegionTMP in 1:nrow(mrbinObject$parameters$noisePreviewRegion2D)){
           plotTitleTMP1<-""
           plotTitleTMP2<-""
@@ -3105,7 +3108,7 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
     if(showSpectrumPreview=="Yes"&!silent){
       grDevices::replayPlot(plotRecordingTMP)
     }
-	Sys.sleep(.2)
+	Sys.sleep(.1)
     if(plotOnly){
         nextTMP<-TRUE
     } else {
@@ -3167,12 +3170,11 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
    }
     if(!plotOnly){
       if(!stopTMP&mrbinObject$parameters$verbose){
-        message("Hint: 0.75 if metabolites are always present (serum), 0.2 if metabolites are \nabsent in some samples (urine, cell culture)")
+        message("Hint: High (e.g. 0.75) if metabolites are expected to be present in each \nsample (e.g. in serum), low (0.2) if metabolites are absent in some \nsamples (urine, cell culture)")
         utils::flush.console()
       }
       if(showSpectrumPreview=="Yes"){#show a plot of number of bins left at different thresholds 0.05-1
-        thresholdValuesTMP<-sort(unique(c(as.numeric(mrbinObject$parameters$noiseThreshold),
-          0.05*(1:20))))
+        thresholdValuesTMP<-sort(unique(c(as.numeric(mrbinObject$parameters$noiseThreshold),(1:40)/40)))
         nBins<-rep(NA,length(thresholdValuesTMP))
         for(i in 1:length(thresholdValuesTMP)){
           mrbinObjectTMP<-editmrbin(mrbinObject=mrbinObject,
@@ -3194,10 +3196,14 @@ setNoiseLevels<-function(mrbinObject,plotOnly=FALSE,
 	  while(!nextTMP&!stopTMP){
        if(showSpectrumPreview=="Yes"){#show a plot of number of bins left at different thresholds 0.05-1
         try(dev.off(),silent=TRUE)
+		graphics::par(mar=c(2.3, 2.1, 2.5, 0.5),mgp=c(1,0.1,0))#bottom, left, top, and right
         graphics::plot(thresholdValuesTMP,nBins,type="l",main="Noise threshold preview",
           xlab="(More noise)                                                       (Less noise)\nNoise threshold",
           ylab="Number of bins after noise removal",bg="white",
-          xlim=c(0,1),ylim=c(.96*min(nBins),1.04*max(nBins)))
+          xlim=c(0,1),ylim=c(.96*min(nBins),1.04*max(nBins)),
+		  xaxt="n",yaxt="n",cex.lab=.7)
+		graphics::axis(2,cex.axis=.7,tck=-0.0075,mgp=c(0,0.2,0))
+		graphics::axis(1,cex.axis=.7,tck=-0.0075,mgp=c(0,0.1,0))
         graphics::abline(h=ncol(mrbinObject$bins),col="blue",lty=2)
         graphics::abline(v=#unique(c(
           as.numeric(mrbinObject$parameters$noiseThreshold)#,0.2,0.75,0.05))
@@ -4323,6 +4329,8 @@ binMultiNMR<-function(){
         binData[[ibinData]]$noise_level_TMP
       mrbin.env$mrbin$parameters$noise_level_adjusted[ibinData]<-
         median(binData[[ibinData]]$noise_level_TMP)
+      mrbin.env$mrbin$parameters$baseline[ibinData]<-
+        binData[[ibinData]]$baseline
       currentSpectrumNameTMP[ibinData]<-binData[[ibinData]]$currentSpectrumName
     }
     if(length(unique(mrbin.env$mrbin$parameters$AcquPars$NS))>1){
@@ -4410,8 +4418,9 @@ binMultiNMR<-function(){
 createBinRegions<-function(){
    if(mrbin.env$mrbin$parameters$binMethod=="Rectangular bins"){
        mrbin.env$mrbin$parameters$binRegions<-matrix(ncol=4,
-                                        nrow=mrbin.env$mrbinTMP$nbins,
-                                        dimnames=list(NULL,c("left","right","top","bottom")))
+                                        nrow=mrbin.env$mrbinTMP$nbins
+                                        #,dimnames=list(NULL,c("left","right","top","bottom"))
+										)
        if(mrbin.env$mrbin$parameters$dimension=="1D"){
           decimalDigits<-max(nchar(strsplit(as.character(mrbin.env$mrbin$parameters$binRegion[1]),"[.]")[[1]][2]),
                              nchar(strsplit(as.character(mrbin.env$mrbin$parameters$binwidth1D),"[.]")[[1]][2]),
@@ -5328,7 +5337,8 @@ unitVarianceScaling<-function(mrbinResults,verbose=TRUE,errorsAsWarnings=FALSE){
 #'     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",tryParallel=TRUE,
 #'     fixNegatives="No",logTrafo="No",PCA="No",signal_to_noise2D=10,
 #'     NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
-#'                  system.file("extdata/2/12/pdata/10",package="mrbin"))))
+#'                  system.file("extdata/2/12/pdata/10",package="mrbin"),
+#'                  system.file("extdata/3/12/pdata/10",package="mrbin"))))
 #' plotPCA(results)
 plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="bottomleft",
  annotate=TRUE,verbose=TRUE){
@@ -5342,12 +5352,17 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
     }
     colorPalette<-c("black",grDevices::rainbow(length(levels(FactorsTMP))-1))#
     if(annotate){
-      mrbinResults<-annotatemrbin(mrbinResults)
+      #mrbinResults<-annotatemrbin(mrbinResults)
       if(length(mrbinResults$metadata$annotations)==ncol(mrbinResults$bins)){
         colnames(mrbinResults$bins)<-mrbinResults$metadata$annotations
       }
     }
     if(nrow(mrbinResults$bins)>1){
+	  devAskNewPage(ask = FALSE)
+	  #if(closeDevice){
+	  #  try(dev.off(),silent=TRUE)
+	  #  devAskNewPage(ask = FALSE)
+	  #}
       graphics::par(mgp=c(1,1,0))
       numlevels<-NULL
       if(defineGroups){
@@ -5355,7 +5370,6 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
                          FactorsTMP[which(FactorsTMP==levels(FactorsTMP)[i])][1]))
       }
       numlevels2<-numlevels
-      #move PCA to a new function in future
       PCA<-stats::prcomp(mrbinResults$bins)
       addTMP1<-.15*(max(PCA$x[,1])-min(PCA$x[,1]))
       xlimTMP<-c(min(PCA$x[,1])-addTMP1,max(PCA$x[,1])+addTMP1)
@@ -5386,12 +5400,13 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
       }
       if(loadings){#plot loadings: do only if parameter set
         graphics::plot(PCA$rotation,xlim=xlimTMProt,ylim=ylimTMProt,xlab="PC1",ylab="PC2",
-                       pch=16,cex=.75,main="PCA Loadings Plot", ask=FALSE, xaxt='n', yaxt='n')
+                       pch=16,cex=.75,main="PCA Loadings Plot", ask=FALSE, xaxt='n', yaxt='n'
+					   ,mgp=c(0,0,0))
         #display only top feature names
         topFeatures<-order(PCA$rotation[,1]^2+PCA$rotation[,2]^2,
           decreasing=TRUE)[1:min(nrow(PCA$rotation),50)]
         graphics::text(PCA$rotation[topFeatures,],labels=rownames(PCA$rotation)[topFeatures]
-                       ,pos=4,cex=1)
+                       ,pos=4,cex=.65)
       } else {
         graphics::plot(PCA$x
              ,xlim=xlimTMP,
@@ -5399,18 +5414,18 @@ plotPCA<-function(mrbinResults,defineGroups=TRUE,loadings=FALSE,legendPosition="
              pch=PCAFactors2,
              xaxt='n', yaxt='n',
              col=colorPalette[PCAFactors],
-             main="PCA",
+             main="PCA Scores Plot",
              xlab=xlabTMP,
              ylab=ylabTMP,
-             cex=.75, ask=FALSE)
+             cex=.75, ask=FALSE,mgp=c(0,0,0))
 	    if(annotate){
           graphics::text(PCA$x,labels=paste(substr(rownames(PCA$x),1,
-            mrbinResults$parameters$PCAtitlelength)),pos=3,cex=1,
+            mrbinResults$parameters$PCAtitlelength)),pos=3,cex=.65,
                col=colorPalette[PCAFactors])
 		}
           if(defineGroups) graphics::legend(legendPosition,
                   legend=levels(FactorsTMP),
-                  col=colorPalette[numlevels],pch=numlevels2,cex=1,bg=NULL)#"white"
+                  col=colorPalette[numlevels],pch=numlevels2,cex=.7,bg=NULL)#"white"
       }
       utils::flush.console()
     } else {
@@ -5494,7 +5509,7 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
          }
       }
     }
-    rectangleRegionsTMP<-NULL
+	rownames(binRegionsTMP)<-NULL
     if(mrbinResults$parameters$dimension=="1D"){
       region<-c(max(mrbinResults$parameters$binRegions[,1:2],na.rm=TRUE),
         min(mrbinResults$parameters$binRegions[,1:2],na.rm=TRUE),0,100)
@@ -5504,7 +5519,9 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
         min(mrbinResults$parameters$binRegions[,3:4],na.rm=TRUE),
         max(mrbinResults$parameters$binRegions[,3:4],na.rm=TRUE))
     }
-    if(nrow(binRegionsTMP2)<9000){
+    #Don't plot rectangles if there are too many to avoid speed issues
+	rectangleRegionsTMP<-NULL
+    if(nrow(binRegionsTMP2)<15000){
       rectangleRegionsTMP<-binRegionsTMP
     }
     if(mrbinResults$parameters$dimension=="1D"){
@@ -5522,7 +5539,7 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
 	#PCA plot
     plotPCA(mrbinResults,defineGroups=defineGroups,loadings=FALSE,verbose=FALSE)
 	#QC boxplots
-	graphics::par(mar=c(5.1,2,2,0.5))
+	graphics::par(mar=c(4.1,1.1,2.5,0.5))
     axisCex1<-.1
     if(ncol(mrbinResults$bins)<100) axisCex1<-.25
     if(ncol(mrbinResults$bins)<25) axisCex1<-.4
@@ -5532,12 +5549,14 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
     if(nrow(mrbinResults$bins)<25) axisCex2<-.4
     if(nrow(mrbinResults$bins)<15) axisCex2<-.7
     graphics::boxplot(mrbinResults$bins[,1:min(ncol(mrbinResults$bins),5000)],
-	  main="Intensities (bin-wise)",
+	  main="Intensities (bin-wise)",yaxt="n",
       xlab="",ylab="",boxwex=1,ask=FALSE,xaxt="n")
-    graphics::axis(1,las=2,cex.axis=axisCex1,at=1:ncol(mrbinResults$bins),labels=colnames(mrbinResults$bins))
+    graphics::axis(2,cex.axis=.7,tck=-0.0075,mgp=c(0,0.1,0))
+    graphics::axis(1,las=2,tck=-0.0075,mgp=c(0,0.1,0),cex.axis=axisCex1,at=1:ncol(mrbinResults$bins),labels=colnames(mrbinResults$bins))
     graphics::boxplot(t(mrbinResults$bins),main="Intensities (sample-wise)",
-      xlab="",ylab="",boxwex=1,ask=FALSE,xaxt="n")
-    graphics::axis(1,las=2,cex.axis=axisCex2,at=1:nrow(mrbinResults$bins),
+      xlab="",ylab="",boxwex=1,ask=FALSE,xaxt="n",yaxt="n")
+    graphics::axis(2,cex.axis=.7,tck=-0.0075,mgp=c(0,0.1,0))
+    graphics::axis(1,las=2,tck=-0.0075,mgp=c(0,0.1,0),cex.axis=axisCex2,at=1:nrow(mrbinResults$bins),
       labels=substr(rownames(mrbinResults$bins),1,mrbinResults$parameters$PCAtitlelength))
     utils::flush.console()
     #Finish plot
@@ -5558,6 +5577,7 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
 #' @param region A vector defining the plot region (left, right, top, bottom) or "all" for the whole spectrum
 #' @param rectangleRegions A 4-column matrix defining areas where to plot rectangles
 #' @param rectangleColors Define colors for the rectangles
+#' @param density Shading lines for the rectangles
 #' @param rectangleFront Plot rectangles in front of spectrum rather than in background (only 2D)
 #' @param polygonRegion Defines 4 corners of a polygon to be plotted
 #' @param color Defines the color of the spectrum plot. If NULL, a rainbow theme is used for 2D NMR
@@ -5574,6 +5594,7 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
 #' @param lwd Line width, defaults to 1
 #' @param spectrumTMP A size-reduced spectrum for quicker plotting. Defaults to NULL
 #' @param renewSpectrum Should a new size-reduced spectrum for quicker plotting be calculated, or can the old one be used? Default: TRUE
+#' @param cex.axis Font size of axis tick labels.
 #' @param background Background color, defaults to NULL (no background fill, usually results in a white background)
 #' @param title Display the spectrum title in plot, defaults to NULL
 #' @param titleCounter Count of the spectrum title for positioning in plot, defaults to NULL
@@ -5590,11 +5611,13 @@ plotResults<-function(mrbinResults,defineGroups=TRUE,process=TRUE,silent=FALSE){
 
 plotNMR<-function(region=NULL,rectangleRegions=NULL,
                    rectangleColors=c("darkseagreen3","orange","blue","red","yellow","gray","purple"),
-                   rectangleFront=FALSE,polygonRegion=NULL,
+                   density=NULL,
+				   rectangleFront=FALSE,polygonRegion=NULL,
                    color=NULL,add=FALSE,showGrid=FALSE,
                    manualScale=TRUE,plotTitle="",title=NULL,titleCounter=NULL,hideNegative=FALSE,
                    restrictToRange=FALSE,currentSpectrumOriginal=NULL,
 				   spectrumTMP=NULL,renewSpectrum=TRUE,
+				   cex.axis=.7,
                    perspective=FALSE,noise=NULL,dimension=NULL,plotDelay=0.1,lwd=1,background=NULL,...){
  if(is.null(currentSpectrumOriginal)) currentSpectrumOriginal<-mrbin.env$mrbinTMP$currentSpectrumOriginal
  if(is.null(dimension)){
@@ -5616,6 +5639,9 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 	namesTMP<-as.numeric(names(currentSpectrumOriginal))
  }
  #if(!is.null(currentSpectrumOriginal)){
+ if(!is.null(rectangleRegions)){
+    if(is.null(density)) density<-rep(-1,nrow(rectangleRegions))
+ }
    devAskNewPage(ask = FALSE)
    if(is.null(region)){
        if(is.null(mrbin.env$mrbinplot$plotRegion)){
@@ -5710,12 +5736,44 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
       spectrumTMP<-currentSpectrumOriginal[TMP_1,TMP_2]
     }
     if(perspective){
-       zlimTMP<-c(min(spectrumTMP,na.rm=TRUE),max(spectrumTMP,na.rm=TRUE))
+		displaySize<-50#256#512#Reduce resolution for faster plotting of high-res spectra
+		if(nrow(spectrumTMP)>(2.1*displaySize)){
+		   sizeRegion1<- ceiling(nrow(spectrumTMP)/displaySize)
+		   nRegion1<-floor(nrow(spectrumTMP)/sizeRegion1)
+		   rownamesTMPTMP<-rownames(spectrumTMP)[(1:nRegion1-1)*sizeRegion1+1]
+		} else {
+		   sizeRegion1<- 1
+		   nRegion1<-nrow(spectrumTMP)		
+		   rownamesTMPTMP<-rownames(spectrumTMP)
+		}
+		if(ncol(spectrumTMP)>(2.1*displaySize)){
+		   sizeRegion2<-ceiling(ncol(spectrumTMP)/displaySize)
+		   nRegion2<-floor(ncol(spectrumTMP)/sizeRegion2)
+		   colnamesTMPTMP<-colnames(spectrumTMP)[(1:nRegion2-1)*sizeRegion2+1]
+		} else {
+		   sizeRegion2<-1
+		   nRegion2<-ncol(spectrumTMP)
+		   colnamesTMPTMP<-colnames(spectrumTMP)
+		}
+		spectrumTMP2<-matrix(rep(0,nRegion2*nRegion1),ncol=nRegion2)
+		rownames(spectrumTMP2)<-rownamesTMPTMP
+		colnames(spectrumTMP2)<-colnamesTMPTMP
+		for(i in 1:nRegion1) {
+		   for(j in 1:nRegion2) {
+			  spectrumTMP2[i,j]<-max(spectrumTMP[
+				((i-1)*sizeRegion1)+1:sizeRegion1,
+				((j-1)*sizeRegion2)+1:sizeRegion2])
+		   }
+		}
+		spectrumTMP<-spectrumTMP2
+       #zlimTMP<-c(min(spectrumTMP,na.rm=TRUE),max(spectrumTMP,na.rm=TRUE))
+       zlimTMP<-c(sort(spectrumTMP)[.25*length(spectrumTMP)],sort(spectrumTMP)[.999*length(spectrumTMP)])#quantile(spectrumTMP,.15)
        if(!is.null(noise)){
-         zlimTMP[1]<-sort(spectrumTMP)[.25*length(spectrumTMP)]#quantile(spectrumTMP,.15)
-         zlimTMP<-c(min(0,zlimTMP[1]),noise)
+       #  zlimTMP[1]<-sort(spectrumTMP)[.25*length(spectrumTMP)]#quantile(spectrumTMP,.15)
+         zlimTMP[1]<-min(zlimTMP[1],noise-0.1*abs(noise))
+         zlimTMP[2]<-noise+0.8*abs(noise)
        }
-       zlimTMP[2]<-zlimTMP[2]+0.8*abs(zlimTMP[2])
+       #zlimTMP[2]<-zlimTMP[2]+0.8*abs(zlimTMP[2])
        if(length(spectrumTMP)>0){
          spectrumTMP2<-spectrumTMP
          spectrumTMP2[spectrumTMP2<zlimTMP[1]]<-zlimTMP[1]+0.01*abs(zlimTMP[1])#avoid warning messages
@@ -5763,6 +5821,7 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 		#}
 		displaySize<-300#256#512#Reduce resolution for faster plotting of high-res spectra
 		#if(!is.null(currentSpectrumOriginal)){
+		if(!showGrid){#When using showGrid, the original resolution should be maintained to show true location of individual data points
 			if(nrow(spectrumTMP)>(2.1*displaySize)){
 			   sizeRegion1<- ceiling(nrow(spectrumTMP)/displaySize)
 			   nRegion1<-floor(nrow(spectrumTMP)/sizeRegion1)
@@ -5819,9 +5878,9 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 			   # spectrumTMP<-spectrumTMP2
 			# }
 			#
-		#}
+		}
       }
-      options(max.contour.segments=300)
+      options(max.contour.segments=1000)
 	  colnamesSpectrumTMP<-as.numeric(colnames(spectrumTMP))#displaySize1DTMP
 	  rownamesSpectrumTMP<-as.numeric(rownames(spectrumTMP))#displaySize1DTMP
       if(!add){
@@ -5841,9 +5900,9 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
             type="l",xlim=c(-regionTMP[1],-regionTMP[2]),
             ylim=c(-regionTMP[4],-regionTMP[3]),main=plotTitle,xaxt="n",yaxt="n",
             xlab="Chemical shift [ppm]",ylab="Chemical shift [ppm]",...)
+		  xmarginTMP<-abs(region[1]-region[2])*.1
+		  ymarginTMP<-abs(region[3]-region[4])*.1
 		  if(!is.null(background)){
-			  xmarginTMP<-abs(region[1]-region[2])*.1
-			  ymarginTMP<-abs(region[3]-region[4])*.1
 			  graphics::rect(xleft=-(region[1]+xmarginTMP),
 				ybottom=-(region[3]-ymarginTMP),
 				xright=-(region[2]-xmarginTMP),
@@ -5857,13 +5916,59 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
           labels2<-(0:100*magnitude1+floor(min(region[3:4])/magnitude1)*magnitude1)
           at1<-(0:100*magnitude2+floor(min(-region[1:2])/magnitude2)*magnitude2)
           labels1<--(0:100*magnitude2+floor(min(-region[1:2])/magnitude2)*magnitude2)
-          graphics::axis(2,at=at2,labels=labels2,...)
-          graphics::axis(1,at=at1,labels=labels1,...)
+          graphics::axis(2,at=at2,labels=labels2,tck=-0.0075,mgp=c(0,0.1,0),cex.axis=cex.axis,...)
+          graphics::axis(1,at=at1,labels=labels1,tck=-0.0075,mgp=c(0,0,0),cex.axis=cex.axis,...)
       }
+	  if(!is.null(rectangleRegions)){
+	    #if(is.null(density)) density<-rep(-1,nrow(rectangleRegions))
+	    if(sum(is.na(rectangleRegions[,3]))>0){
+		  rectangleRegions[is.na(rectangleRegions[,3]),3]<-region[3]-ymarginTMP
+		}
+	    if(sum(is.na(rectangleRegions[,4]))>0){
+		  rectangleRegions[is.na(rectangleRegions[,4]),4]<-region[4]+ymarginTMP
+		}
+	  }
       if(!add&!is.null(rectangleRegions)&!rectangleFront){
           graphics::rect(xleft=-rectangleRegions[,1], ybottom=-rectangleRegions[,4],
                          xright=-rectangleRegions[,2], ytop=-rectangleRegions[,3],
-                         col = rectangleColors, border = rectangleColors,lwd=1)
+                         col = rectangleColors, density = density,
+						 border = rectangleColors,lwd=1)
+  	      if(!is.null(rownames(rectangleRegions))){#display metabolite identities if provided
+		    graphics::text(x=-rectangleRegions[,2],#apply(rectangleRegions[,1:2],1,mean), 
+		      y=-apply(rectangleRegions[,3:4],1,mean),offset=0.1,
+		      labels=rownames(rectangleRegions),
+		      pos=4,cex=.8,adj=0,
+			  col=rectangleColors)
+		  }
+		  if(!is.null(colnames(rectangleRegions))){
+		   if(!colnames(rectangleRegions)[1]==""){
+		   leftValueTMP<-max(rectangleRegions[nrow(rectangleRegions)-0:1,2])#polygonRegion[1,2],polygonRegion[3,2])
+		   rightValueTMP<-min(rectangleRegions[nrow(rectangleRegions)-0:1,2])#polygonRegion[1,2],polygonRegion[3,2])
+		   graphics::text(x=-rightValueTMP, 
+		      y=-regionTMP[3],offset=0.1,
+		      labels =rightValueTMP,
+		      pos=4,cex=.8,#adj=0,
+			  col="gray28")
+		   graphics::text(x=-mean(rectangleRegions[nrow(rectangleRegions)-0:1,2]),#c(polygonRegion[1,2],polygonRegion[3,2])), 
+		      y=-regionTMP[3],#offset=0.4,
+		      labels=colnames(rectangleRegions)[1],
+		      pos=1 ,cex=.7,#adj=0,
+			  col="gray28")
+		  } else {
+		    leftValueTMP<-rectangleRegions[nrow(rectangleRegions),2]#polygonRegion[1,2]
+		  }
+  	      graphics::text(x=-leftValueTMP, 
+		      y=-regionTMP[3],offset=0.1,
+		      labels=leftValueTMP,
+		      pos=2,cex=.8,adj=0,
+			  col="gray28")
+		   #graphics::mtext(text=paste(" ",polygonRegion[1,2],sep=""),
+		   #   side=3,line=-1,cex=.8,adj=0,col=darkgray)
+		   #graphics::mtext(text=paste("           ",polygonRegion[3,2],sep=""),
+		   #   side=3,line=-1,cex=.8,adj=0,col=darkgray)
+		   #graphics::mtext(text=paste(" ",colnames(polygonRegion)[1],sep=""),
+		   #   side=3,line=-2,cex=.8,adj=0,col=darkgray)
+		  }
           graphics::box()
       }
       if(showGrid){
@@ -5882,37 +5987,8 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
       }
       if(!add&!is.null(polygonRegion)){
           graphics::polygon(-1*polygonRegion[,2],-1*polygonRegion[,1],
-                    col=rectangleColors, border = "darkgray"
+                    col=rectangleColors, border = NA#"darkgray"
                     )
-		  if(!is.null(colnames(polygonRegion))){
-		   if(nrow(polygonRegion)>2){
-		   leftValueTMP<-max(polygonRegion[1,2],polygonRegion[3,2])
-		   rightValueTMP<-min(polygonRegion[1,2],polygonRegion[3,2])
-		   graphics::text(x=-rightValueTMP, 
-		      y=-regionTMP[3],offset=0,
-		      labels =rightValueTMP,
-		      pos=4,cex=.8,#adj=0,
-			  col="darkgray")
-		   graphics::text(x=-mean(c(polygonRegion[1,2],polygonRegion[3,2])), 
-		      y=-regionTMP[3],#offset=0.4,
-		      labels=colnames(polygonRegion)[1],
-		      pos=1 ,cex=.8,#adj=0,
-			  col="darkgray")
-		  } else {
-		    leftValueTMP<-polygonRegion[1,2]
-		  }
-  	      graphics::text(x=-leftValueTMP, 
-		      y=-regionTMP[3],offset=0,
-		      labels=leftValueTMP,
-		      pos=2,cex=.8,adj=0,
-			  col="darkgray")
-		   #graphics::mtext(text=paste(" ",polygonRegion[1,2],sep=""),
-		   #   side=3,line=-1,cex=.8,adj=0,col=darkgray)
-		   #graphics::mtext(text=paste("           ",polygonRegion[3,2],sep=""),
-		   #   side=3,line=-1,cex=.8,adj=0,col=darkgray)
-		   #graphics::mtext(text=paste(" ",colnames(polygonRegion)[1],sep=""),
-		   #   side=3,line=-2,cex=.8,adj=0,col=darkgray)
-		  }
           graphics::box()
       }
 	  if(is.null(mrbin.env$mrbinplot$highestContour)){
@@ -5955,9 +6031,11 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
           ybottom=-min(rownamesTMP),ytop=-max(rownamesTMP),border=color[1])#"gray")
       #}
       if(!is.null(rectangleRegions)&rectangleFront){
+	    if(is.null(density)) density<-rep(-1,nrow(rectangleRegions))
           graphics::rect(xleft=-rectangleRegions[,1], ybottom=-rectangleRegions[,4],
                          xright=-rectangleRegions[,2], ytop=-rectangleRegions[,3],
-                         col = rectangleColors, border = rectangleColors)
+                         col = rectangleColors, density = density,
+						 border = rectangleColors)
           graphics::box()
       }
       utils::flush.console()
@@ -5980,8 +6058,9 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 		}		
         spectrumTMP<-currentSpectrumOriginal[TMP_1]
         displaySize1D<-1600#Reduce resolution for faster plotting of high-res spectra
-        #this took too much time (preserving both min and max values in each segment):
-		# if(length(spectrumTMP)>(2.5*displaySize1D)){
+		if(!showGrid){#When using showGrid, the original resolution should be maintained to show true location of individual data points
+         #this took too much time (preserving both min and max values in each segment):
+		 # if(length(spectrumTMP)>(2.5*displaySize1D)){
              # spectrumTMPtmp<-rep(0,2048)#create smaller version of spectrum
 			 # spectrumTMPtmp[1]<-spectrumTMP[1]#first and last data point should be identical
 			 # spectrumTMPtmp[displaySize1D]<-spectrumTMP[length(spectrumTMP)]#first and last data point should be identical
@@ -6011,9 +6090,9 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 				# names(spectrumTMPtmp)[1+idisplaySize*2]<-names(TMPvalueRight)
 			 # }
 			# spectrumTMP<-spectrumTMPtmp
-		# }
-		#this only shows the max values of each segment
-        if(length(spectrumTMP)>(2.5*displaySize1D)){
+		 #}
+		 #this only shows the max values of each segment
+         if(length(spectrumTMP)>(2.5*displaySize1D)){
 			 chunkSizeTMP<-ceiling(length(spectrumTMP)/displaySize1D)
 			 displaySize1DTMP<-floor(length(spectrumTMP)/chunkSizeTMP)
              spectrumTMPtmp<-rep(0,displaySize1DTMP)#create smaller version of spectrum
@@ -6022,12 +6101,15 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 			    spectrumTMPtmp[idisplaySize]<-max(spectrumTMP[(chunkSizeTMP*(idisplaySize-1)+1):(chunkSizeTMP*idisplaySize)])
 			 }
 			spectrumTMP<-spectrumTMPtmp
-		}
-      #} else {
-      #}
+		 }
+        }
 	 }
      if(manualScale){
-          ymin<-min(currentSpectrumOriginal)/mrbin.env$mrbinplot$intensityScale+mrbin.env$mrbinplot$intensityOffset
+          #ymin<-min(currentSpectrumOriginal)/mrbin.env$mrbinplot$intensityScale+mrbin.env$mrbinplot$intensityOffset
+          #empirical:
+		  #1D: baseline is at 27 percentile, noise sd at 41 percentile		  
+		  #2D: baseline is at 50 percentile, noise sd at 75 percentile 
+		  ymin<-sort(currentSpectrumOriginal)[length(currentSpectrumOriginal)*.27]/mrbin.env$mrbinplot$intensityScale+mrbin.env$mrbinplot$intensityOffset
           ymax<-max(currentSpectrumOriginal)/mrbin.env$mrbinplot$intensityScale+mrbin.env$mrbinplot$intensityOffset
         } else {
           ymin<-0
@@ -6048,11 +6130,13 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 		  }
           graphics::plot(NULL,NULL,
             type="l",xlim=c(regionTMP[1],regionTMP[2]),
-            ylim=c(ymin,ymax),main=plotTitle,
+            ylim=c(ymin,ymax),main=plotTitle,xaxt="n",yaxt="n",
             xlab="Chemical shift [ppm]",ylab="Intensity",...)
+		  xmarginTMP<-abs(region[1]-region[2])*.1
+		  ymarginTMP<-abs(ymax-ymin)*.1
+          graphics::axis(2,tck=-0.0075,mgp=c(0,0.1,0),cex.axis=cex.axis,...)
+          graphics::axis(1,tck=-0.0075,mgp=c(0,0,0),cex.axis=cex.axis,...)
 		  if(!is.null(background)){
-			  xmarginTMP<-abs(region[1]-region[2])*.1
-			  ymarginTMP<-abs(ymax-ymin)*.1
 			  graphics::rect(xleft=(region[1]+xmarginTMP),
 				ybottom=(ymin-ymarginTMP),
 				xright=(region[2]-xmarginTMP),
@@ -6062,37 +6146,41 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 		  }
       }
       if(!add&!is.null(rectangleRegions)){
-          graphics::rect(xleft=rectangleRegions[,1], ybottom=0,
+   	      #if(is.null(density)) density<-rep(-1,nrow(rectangleRegions))
+          graphics::rect(xleft=rectangleRegions[,1], ybottom=ymin-ymarginTMP,
                     xright=rectangleRegions[,2], ytop=ymax*2,
-                    col = rectangleColors, border = NA)
-          graphics::box()
-      }
-      if(!add&!is.null(polygonRegion)){
-          graphics::polygon(polygonRegion[,2],polygonRegion[,1],
-                    col=rectangleColors, border = "darkgray"
-                    )
-		  if(!is.null(colnames(polygonRegion))){
-		   if(nrow(polygonRegion)>2){
-		   leftValueTMP<-max(polygonRegion[1,2],polygonRegion[3,2])
-		   rightValueTMP<-min(polygonRegion[1,2],polygonRegion[3,2])
+                    col = rectangleColors, density=density,
+					border = rectangleColors)
+  	      if(!is.null(rownames(rectangleRegions))){#display metabolite identities if provided
+		    graphics::text(x=rectangleRegions[,2],#apply(rectangleRegions[,1:2],1,mean), 
+		      y=apply(rectangleRegions[,3:4],1,mean),offset=.1,
+		      labels=rownames(rectangleRegions),
+		      pos=4,cex=.8,adj=0,
+			  col=rectangleColors)
+		  }
+		  if(!is.null(colnames(rectangleRegions))){
+		   #if(nrow(polygonRegion)>2){
+		   if(!colnames(rectangleRegions)[1]==""){
+		   leftValueTMP<-max(rectangleRegions[nrow(rectangleRegions)-0:1,2])
+		   rightValueTMP<-min(rectangleRegions[nrow(rectangleRegions)-0:1,2])
 		   graphics::text(x=rightValueTMP, 
-		      y=ymax,offset=0,
+		      y=ymax,offset=0.1,
 		      labels =rightValueTMP,
 		      pos=4,cex=.8,#adj=0,
-			  col="darkgray")
-		   graphics::text(x=mean(c(polygonRegion[1,2],polygonRegion[3,2])), 
+			  col="gray28")
+		   graphics::text(x=mean(rectangleRegions[nrow(rectangleRegions)-0:1,2]), 
 		      y=ymax,#offset=0.4,
-		      labels=colnames(polygonRegion)[1],
-		      pos=1 ,cex=.8,#adj=0,
-			  col="darkgray")
+		      labels=colnames(rectangleRegions)[1],
+		      pos=1 ,cex=.7,#adj=0,
+			  col="gray28")
 		  } else {
-		    leftValueTMP<-polygonRegion[1,2]
+		    leftValueTMP<-rectangleRegions[nrow(rectangleRegions),2]
 		  }
 		   graphics::text(x=leftValueTMP, 
-		      y=ymax,offset=0,
+		      y=ymax,offset=0.1,
 		      labels=leftValueTMP,
 		      pos=2,cex=.8,adj=0,
-			  col="darkgray")
+			  col="gray28")
 		   #graphics::mtext(text=paste(" ",polygonRegion[1,2],sep=""),
 		   #   side=3,line=-1,cex=.8,adj=0,col=darkgray)
 		   #graphics::mtext(text=paste("           ",polygonRegion[3,2],sep=""),
@@ -6100,6 +6188,12 @@ plotNMR<-function(region=NULL,rectangleRegions=NULL,
 		   #graphics::mtext(text=paste(" ",colnames(polygonRegion)[1],sep=""),
 		   #   side=3,line=-2,cex=.8,adj=0,col=darkgray)
 		  }
+          graphics::box()
+      }
+      if(!add&!is.null(polygonRegion)){
+          graphics::polygon(polygonRegion[,2],polygonRegion[,1],
+                    col=rectangleColors, border = NA
+                    )
           graphics::box()
       }
       #if(!is.null(currentSpectrumOriginal)){
@@ -6725,6 +6819,7 @@ binMultiNMR2<-function(folder=NULL,dimension="1D",
        meanNumberOfPointsPerBin_TMP=binData$pointsPerBin,#mrbin.env$mrbinTMP$meanNumberOfPointsPerBin_TMP
        noise_level_Raw_TMP=noiseData$noise_level,#noise level per sample before reference scaling
        noise_level_TMP=noiseData$noise_level_TMP/scalingFactor,#noise level per bin and sample after reference scaling #noiseDataScaled$noise_level_TMP,
+       baseline=noiseData$baseline,#baseline level per sample before reference scaling
        currentSpectrumName=NMRdataList$currentSpectrumName,
        AcquPars=NMRdataList$AcquPars,
        warningMessage=warningMessage
@@ -7115,7 +7210,8 @@ createmrbin<-function(){
                noise_level_Raw=NULL,
                noise_level_adjusted=NULL,
                noise_level=NULL,#noise levels for each bin of each spectrum
-               binRegions=matrix(ncol=4,nrow=0,dimnames=list(NULL,c("left","right","top","bottom"))),
+			   baseline=NULL,
+               binRegions=matrix(ncol=4,nrow=0),#dimnames=list(NULL,c("left","right","top","bottom"))),
                AcquPars=list(NS=0,BF1=0,P1=0,RG=0,PULPROG="",SOLVENT=""),
                numberOfFeaturesRaw=NULL,
                numberOfFeaturesAfterRemovingSolvent=NULL,
@@ -7145,7 +7241,7 @@ createmrbin<-function(){
                annotations="",#Vector of features with potential metabolite identities, corresponds to columns in $bins
                factors=NULL,
                metaData=NULL,#for storing matrix of metadata
-               metaboliteIdentities=matrix(nrow=0,ncol=4,dimnames=list(NULL,c('left','right','top','bottom')))#Potential metabolite identities and ppm values. data.frame with metaboliteName, left, right, top, bottom
+               metaboliteIdentities=matrix(nrow=0,ncol=4)#,dimnames=list(NULL,c('left','right','top','bottom')))#Potential metabolite identities and ppm values. data.frame with metaboliteName, left, right, top, bottom
     ),
     transformations=NULL,#data transformation or scaling is documented here for later review, including: reference scaling, log trafo, PQN, atnv, etc.
     changeLog=NULL,#changes to data, parameters, or metadata are documented here, including: time, function name, version, names of changed parameters
@@ -7353,7 +7449,8 @@ checkmrbin<-function(mrbinObject,verbose=TRUE,errorsAsWarnings=NULL){
 #'
 #' This function edits the metabolite list within an mrbin object and returns it
 #' @param mrbinObject An mrbin object
-#' @param borders A matrix of signal borders. 1D: two columns: left, right 2D: four columns: left, right, top, bottom
+#' @param ids A matrix of potential metabolite identities. This has to be a 4-column matrix with columns indicating left, right, top, bottom. Rownames are metabolite names. If this matrix is not provided, borders and metabolitenames have to be provided.
+#' @param borders A matrix of signal borders. 1D: two columns: left, right. 2D: four columns: left, right, top, bottom
 #' @param metabolitenames A character vector of metabolite identities
 #' @param add Should the new metabolite list be added to an existing list, or replace the current list?
 #' @return An (invisible) mrbin object
@@ -7369,35 +7466,42 @@ checkmrbin<-function(mrbinObject,verbose=TRUE,errorsAsWarnings=NULL){
 #'                    ))
 #'  results<-editmetabolitesmrbin(results,borders=matrix(c(
 #'      1.346,1.324,
+#'      4.12,4.1,
 #'      3.052,3.043,
 #'      4.066,4.059
 #'    ),ncol=2,byrow=TRUE),metabolitenames=c(
+#'    "Lactate",
 #'    "Lactate",
 #'    "Creatinine",
 #'    "Creatinine"
 #'    ))
 #' results$parameters$metaboliteIdentities
 
-editmetabolitesmrbin<-function(mrbinObject,borders,metabolitenames,add=TRUE){ #Define metabolite names
-  if(!nrow(borders)==length(metabolitenames)){
-    stop("Metabolite names do not match number of rows in borders matrix.")
+editmetabolitesmrbin<-function(mrbinObject,
+  borders=NULL,metabolitenames=NULL,add=FALSE,ids=NULL){ #Define metabolite names
+  if(is.null(ids)){
+	  if(!nrow(borders)==length(metabolitenames)){
+		stop("Metabolite names do not match number of rows in borders matrix.")
+	  }
+	  if(ncol(borders)==2){
+		 borders<-cbind(borders,rep(-10,nrow(borders)),rep(200,nrow(borders)))
+	  }
+	  colnames(borders)<-c('left','right','top','bottom')
+	  metaboliteIdentities<-mrbinObject$metadata$metaboliteIdentities
+	  if(!add){
+		metaboliteIdentities<-NULL
+	  }
+	  rownames(borders)<-metabolitenames
+  } else {
+    borders<-ids
   }
-  if(ncol(borders)==2){
-     borders<-cbind(borders,rep(-10,nrow(borders)),rep(200,nrow(borders)))
-  }
-  colnames(borders)<-c('left','right','top','bottom')
-  metaboliteIdentities<-mrbinObject$metadata$metaboliteIdentities
-  if(!add){
-    metaboliteIdentities<-NULL
-  }
-  rownames(borders)<-metabolitenames
   metaboliteIdentities=rbind(metaboliteIdentities,borders)
   mrbinObject<-editmrbin(mrbinObject,metadata=list(
     metaboliteIdentities=metaboliteIdentities),
     functionName="mrbin::editmetabolitesmrbin",
     versionNumber=as.character(utils::packageVersion("mrbin")),
     verbose=FALSE)
-  mrbinObject<-annotatemrbin(mrbinObject)
+  #mrbinObject<-annotatemrbin(mrbinObject)
   invisible(mrbinObject)
 }
 
@@ -7406,6 +7510,14 @@ editmetabolitesmrbin<-function(mrbinObject,borders,metabolitenames,add=TRUE){ #D
 #'
 #' This function annotates an mrbin object and returns it with updated $annotations vector
 #' @param mrbinObject An mrbin object
+#' @param annotate If FALSE, the mrbin object will not be changed.
+#' @param metaboliteIdentities A numeric 4-column matrix or the file path for a .csv file containing such a matrix, the first columns containing metabolite names and the first row being a header. Each row belongs to one unique metabolite signal (left, right, top, bottom borders). Row names are metabolite names. If provided, this will overwrite any current metaboliteIdentities matrix present in the mrbin object. If missing, data currently attached to the mrbin object (if any) will be used.
+#' @param hideChemicalShift Should the chemical shift (bin borders) of an identified metabolite be removed, leaving only the metabolite id, or should both be shown? Showing both helps in identifying signals of interest, but hiding the chmical shift might make better plots.
+#' @param hideTentativeIds Should the identities of tentative ids be omitted for clarity?
+#' @param add Should the new metabolite list be added to an existing list, or replace the current list?
+#' @param confirmationPthreshold A threshold to define the p-value cutoff to confirm an annotation
+#' @param confirmationRthreshold A threshold to define the r-value cutoff to confirm an annotation
+#' @param checkBaselineCorrelation Should correlation to baseline be compared to confirm an annotation
 #' @return An (invisible) mrbin object
 #' @export
 #' @examples
@@ -7414,89 +7526,326 @@ editmetabolitesmrbin<-function(mrbinObject,borders,metabolitenames,add=TRUE){ #D
 #'                    binwidth1D=0.04,signal_to_noise1D=1,PCA="No",binRegion=c(9.5,0.5,10,156),
 #'                    saveFiles="No",referenceScaling="No",noiseRemoval="No",
 #'                    fixNegatives="No",logTrafo="No",noiseThreshold=.05,tryParallel=TRUE,
-#'                    NMRfolders=c(system.file("extdata/2/10/pdata/10",package="mrbin"),
-#'                               system.file("extdata/3/10/pdata/10",package="mrbin"))),
-#'                    metadata=list(metaboliteIdentities=matrix(c(
-#'                    1.346,1.324,21,23,
-#'                    3.052,3.043,30.5,33.5,
-#'                    4.066,4.059,57,59.5
-#'                    ),ncol=4,byrow=TRUE,dimnames=list(
-#'                    c("Lactate","Creatinine","Creatinine"),NULL))))
-#' results<-annotatemrbin(results)
+#'                    NMRfolders=c(system.file("extdata/3/10/pdata/10",package="mrbin"),
+#'                               system.file("extdata/2/10/pdata/10",package="mrbin"),
+#'                               system.file("extdata/1/10/pdata/10",package="mrbin"))))
+#' metaboliteIdentities=matrix(c(1.346,1.324,21,23,
+#'                               4.12,4.1,70.8578,71.653,
+#'                               3.052,3.043,30.5,33.5,
+#'                               4.066,4.059,57,59.5),
+#'                    ncol=4,byrow=TRUE)
+#' rownames(metaboliteIdentities)=c("Lactate","Lactate","Creatinine","Creatinine")
+#' results<-annotatemrbin(results,metaboliteIdentities=metaboliteIdentities)
 #' results$metadata$annotations[125:135]
 #' plotPCA(results,loadings=TRUE)
 
-annotatemrbin<-function(mrbinObject){ #Define metabolite names
-  if(nrow(mrbinObject$metadata$metaboliteIdentities)>0){
-    annotations<-rep("",nrow(mrbinObject$parameters$binRegions))
-    names(annotations)<-colnames(mrbinObject$bins)
-    if(mrbinObject$parameters$dimension=="1D"){
-      #if(nrow(mrbinObject$metadata$metaboliteIdentities)>0){
-        for(i in 1:nrow(mrbinObject$metadata$metaboliteIdentities)){
-          testTMP<-(mrbinObject$parameters$binRegions[,1]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
-                    mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
-                   (mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
-                    mrbinObject$parameters$binRegions[,2]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
-                   (mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,1]&
-                    mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,2])
-          if(sum(testTMP)>0){
-           metNameTMP<-rownames(mrbinObject$metadata$metaboliteIdentities)[i]
-           for(j in which(testTMP)){
-            if(annotations[j]==""){
-              annotations[j]<-metNameTMP
-            } else {
-              if(!(annotations[j]==metNameTMP|
-                 substr(annotations[j],1,nchar(metNameTMP)+2)==paste(metNameTMP,", ",sep="")|
-                 substr(annotations[j],max(1,nchar(annotations[j])-nchar(metNameTMP)-2),nchar(annotations[j]))==
-                 paste(", ",metNameTMP,sep="")|
-                 grepl(paste(", ",metNameTMP,", ",sep=""),annotations[j]))
-                 ){
-                 annotations[j]<-paste(annotations[j],metNameTMP,sep=", ")
-              }
-            }
-           }
-          }
-        }
-      #}
-    }
-    if(mrbinObject$parameters$dimension=="2D"){
-      #if(nrow(mrbinObject$metadata$metaboliteIdentities)>0){
-        for(i in 1:nrow(mrbinObject$metadata$metaboliteIdentities)){
-          testTMP<-((mrbinObject$parameters$binRegions[,1]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
-                    mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
-                   (mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,1]&
-                    mrbinObject$parameters$binRegions[,2]>=mrbinObject$metadata$metaboliteIdentities[i,2])|
-                   (mrbinObject$parameters$binRegions[,1]>=mrbinObject$metadata$metaboliteIdentities[i,1]&
-                    mrbinObject$parameters$binRegions[,2]<=mrbinObject$metadata$metaboliteIdentities[i,2]))&#2D
-                   ((mrbinObject$parameters$binRegions[,4]<=mrbinObject$metadata$metaboliteIdentities[i,4]&
-                    mrbinObject$parameters$binRegions[,4]>=mrbinObject$metadata$metaboliteIdentities[i,3])|
-                   (mrbinObject$parameters$binRegions[,3]<=mrbinObject$metadata$metaboliteIdentities[i,4]&
-                    mrbinObject$parameters$binRegions[,3]>=mrbinObject$metadata$metaboliteIdentities[i,3])|
-                   (mrbinObject$parameters$binRegions[,4]>=mrbinObject$metadata$metaboliteIdentities[i,4]&
-                    mrbinObject$parameters$binRegions[,3]<=mrbinObject$metadata$metaboliteIdentities[i,3]))
-          if(sum(testTMP)>0){
-           metNameTMP<-rownames(mrbinObject$metadata$metaboliteIdentities)[i]
-           for(j in which(testTMP)){
-            if(annotations[j]==""){
-              annotations[j]<-metNameTMP
-            } else {
-              if(!(annotations[j]==metNameTMP|
-                 substr(annotations[j],1,nchar(metNameTMP)+2)==paste(metNameTMP,", ",sep="")|
-                 substr(annotations[j],max(1,nchar(annotations[j])-nchar(metNameTMP)-2),nchar(annotations[j]))==
-                 paste(", ",metNameTMP,sep="")|grepl(paste(", ",metNameTMP,", ",sep=""),annotations[j]))
-                 ){
-                 annotations[j]<-paste(annotations[j],metNameTMP,sep=", ")
-              }
-            }
-           }
-          }
-        }
-      #}
-    }
-    if(sum(annotations=="")>0) annotations[annotations==""]<-colnames(mrbinObject$bins)[annotations==""]
-    mrbinObject<-editmrbin(mrbinObject,functionName="mrbin::annotatemrbin",
-             versionNumber=as.character(utils::packageVersion("mrbin")),
-      metadata=list(annotations=trimws(annotations)),verbose=FALSE)
+annotatemrbin<-function(mrbinObject,annotate=TRUE,
+  metaboliteIdentities=NULL,add=FALSE,hideChemicalShift=FALSE,
+  hideTentativeIds=FALSE,confirmationRthreshold=.6,
+  confirmationPthreshold=5e-6,checkBaselineCorrelation=TRUE){#Define metabolite names
+  if(is.character(annotate)){
+    annotateTMP<-TRUE
+	additionalIdentities<-annotate
+  } else {
+    annotateTMP<-annotate
+	additionalIdentities<-NULL
+  }
+  if(annotateTMP){
+    if(is.null(metaboliteIdentities)){#if no ids provided, search them in the mrbin object
+      metaboliteIdentities<-mrbinObject$metadata$metaboliteIdentities
+	} else {#if ids are provided use them (or load them from the provided csv file
+		if(is.character(metaboliteIdentities)){#load from .csv file
+			filepathTMP<-metaboliteIdentities
+			metaboliteIdentitiesTMP<-utils::read.csv(filepathTMP,
+				header=TRUE)#,colClasses=c("character",rep("numeric",4)))	
+			metaboliteIdentities<-as.matrix(metaboliteIdentitiesTMP[2:5])
+			rownames(metaboliteIdentities)<-metaboliteIdentitiesTMP[,1] 
+			#metaboliteIdentities<-metaboliteIdentities[,-1]	
+		}
+		mrbinObject<-editmetabolitesmrbin(mrbinObject,ids=metaboliteIdentities,add=add)
+	}
+	  if(!is.null(additionalIdentities)){#read predefined metabolite ids from file and add them
+		if(additionalIdentities %in% c("urine","milk","serum")){
+			#Mark these metabolites with name extension "__internal__" so they do not get mixed up
+			#with metabolites of the same name provided by the user
+			#The file ending needs to be removed in the end! 
+			additionalIdentitiesTMP<-utils::read.csv(system.file(paste("extdata/data/",additionalIdentities,".csv",sep=""),
+			  package="mrbin"),header=TRUE)#,colClasses=c("character",rep("numeric",4)))
+			additionalIdentitiesTMP2<-as.matrix(additionalIdentitiesTMP[,2:5])
+			rownames(additionalIdentitiesTMP2)<-paste(additionalIdentitiesTMP[,1],"__internal__",sep="")  
+			#rownames(additionalIdentitiesTMP2)<-paste(rownames(additionalIdentitiesTMP2),"?",sep="")
+			metaboliteIdentities<-rbind(metaboliteIdentities,additionalIdentitiesTMP2)
+		} else {
+			message(paste("The provided sample type is not valid:",additionalIdentities))
+		}
+	  }
+	  if(nrow(metaboliteIdentities)>0){
+	    #This finds matches and estimates if the molecule is present by analyzing correlations of different peak of one metabolite
+	    #annotationsTentative = a list of lists, each bin has one list item. this item names potential identifications for the respective bin
+	    #annotationsConfirmed = a list of lists, each bin has one list item. this item names confirmed identifications for the respective bin
+		#metabolitesTMP = a list of lists, each item is one unique metabolite. each subitem is one unique peak of this metabolite and contains all bins that fall within the peak range
+		#if multiple bins are assigned the same id:
+		#calculate Pearson correlation coefficients (p-value) for all of them
+		#"metaboliteName?" - no correlation was found
+		#"metaboliteName" - two peaks correlated to each other
+		#annotations<-rep("",nrow(mrbinObject$parameters$binRegions))
+		#names(annotations)<-colnames(mrbinObject$bins)
+		annotationsTentative<-vector("list",nrow(mrbinObject$parameters$binRegions))
+		names(annotationsTentative)<-colnames(mrbinObject$bins)
+		annotationsConfirmed<-annotationsTentative
+		annotationsSinglePeaks<-annotationsTentative
+		metabolitesTMP<-list()#one entry for each metabolite to save which bins belong to it
+	    metNameListTMP<-NULL
+		if(mrbinObject$parameters$dimension=="1D"){
+			for(i in 1:nrow(metaboliteIdentities)){
+			  #find all bins that lie (fully or partially) within metabolite boundaries
+			  testTMP<-(mrbinObject$parameters$binRegions[,1]<=metaboliteIdentities[i,1]&
+						mrbinObject$parameters$binRegions[,1]>=metaboliteIdentities[i,2])|
+					   (mrbinObject$parameters$binRegions[,2]<=metaboliteIdentities[i,1]&
+						mrbinObject$parameters$binRegions[,2]>=metaboliteIdentities[i,2])|
+					   (mrbinObject$parameters$binRegions[,1]>=metaboliteIdentities[i,1]&
+						mrbinObject$parameters$binRegions[,2]<=metaboliteIdentities[i,2])
+			  if(sum(testTMP)>0){			   
+			    metNameTMP<-rownames(metaboliteIdentities)[i]
+			    #Find out if there are multiple peaks for one metabolite
+			    metNameListTMP<-c(metNameListTMP,metNameTMP)
+			    peakNumberTMP<-sum(metNameListTMP==metNameTMP)#+1
+			    listEntryTMP<-which(testTMP)#use this to add to the growing list (add bin name or number)
+			    if(!metNameTMP%in%names(metabolitesTMP)){#if this metabolite was not found before, add it to the list
+			      metabolitesTMP<-c(metabolitesTMP,list(list(listEntryTMP)))
+				  names(metabolitesTMP)[length(metabolitesTMP)]<-metNameTMP
+				  names(metabolitesTMP[[metNameTMP]])[1]<-peakNumberTMP
+				  #metabolitesTMP[[metNameTMP]]<-list()
+			    } else {#metabolite was in list already, add a new peak
+			      metabolitesTMP[[metNameTMP]]<-c(metabolitesTMP[[metNameTMP]],list(listEntryTMP))
+			      names(metabolitesTMP[[metNameTMP]])[length(metabolitesTMP[[metNameTMP]])]<-peakNumberTMP
+			      #metabolitesTMP[[metNameTMP]]<-c(metabolitesTMP[[metNameTMP]],which(testTMP))#add bin name or number
+			    }
+			    for(j in which(testTMP)){
+				  if(is.null(annotationsTentative[[j]])){
+				    annotationsTentative[[j]]<-list(metNameTMP)
+				  } else {
+				    if(!(metNameTMP%in%annotationsTentative[[j]])){
+					 annotationsTentative[[j]]<-c(annotationsTentative[[j]],metNameTMP)
+					 #paste(annotations[j],metNameTMP,sep=", ")
+				  }
+				}
+			   }
+			  }
+			}
+		}
+		if(mrbinObject$parameters$dimension=="2D"){
+			for(i in 1:nrow(metaboliteIdentities)){
+			  testTMP<-((mrbinObject$parameters$binRegions[,1]<=metaboliteIdentities[i,1]&
+						mrbinObject$parameters$binRegions[,1]>=metaboliteIdentities[i,2])|
+					   (mrbinObject$parameters$binRegions[,2]<=metaboliteIdentities[i,1]&
+						mrbinObject$parameters$binRegions[,2]>=metaboliteIdentities[i,2])|
+					   (mrbinObject$parameters$binRegions[,1]>=metaboliteIdentities[i,1]&
+						mrbinObject$parameters$binRegions[,2]<=metaboliteIdentities[i,2]))&#2D
+					   ((mrbinObject$parameters$binRegions[,4]<=metaboliteIdentities[i,4]&
+						mrbinObject$parameters$binRegions[,4]>=metaboliteIdentities[i,3])|
+					   (mrbinObject$parameters$binRegions[,3]<=metaboliteIdentities[i,4]&
+						mrbinObject$parameters$binRegions[,3]>=metaboliteIdentities[i,3])|
+					   (mrbinObject$parameters$binRegions[,4]>=metaboliteIdentities[i,4]&
+						mrbinObject$parameters$binRegions[,3]<=metaboliteIdentities[i,3]))
+			  if(sum(testTMP)>0){
+				metNameTMP<-rownames(metaboliteIdentities)[i]
+			    #Find out if there are multiple peaks for one metabolite
+			    metNameListTMP<-c(metNameListTMP,metNameTMP)
+			    peakNumberTMP<-1+sum(metNameListTMP==metNameTMP)
+			    listEntryTMP<-which(testTMP)#use this to add to the growing list (add bin name or number)
+			    if(!metNameTMP%in%names(metabolitesTMP)){#if this metabolite was not found before, add it to the list
+			      metabolitesTMP<-c(metabolitesTMP,list(list(listEntryTMP)))
+				  names(metabolitesTMP)[length(metabolitesTMP)]<-metNameTMP
+				  names(metabolitesTMP[[metNameTMP]])[1]<-peakNumberTMP
+				  #metabolitesTMP[[metNameTMP]]<-list()
+			    } else {#metabolite was in list already, add a new peak
+			      metabolitesTMP[[metNameTMP]]<-c(metabolitesTMP[[metNameTMP]],list(listEntryTMP))
+			      names(metabolitesTMP[[metNameTMP]])[length(metabolitesTMP[[metNameTMP]])]<-peakNumberTMP
+			      #metabolitesTMP[[metNameTMP]]<-c(metabolitesTMP[[metNameTMP]],which(testTMP))#add bin name or number
+			    }
+				for(j in which(testTMP)){
+					if(is.null(annotationsTentative[[j]])){
+						annotationsTentative[[j]]<-list(metNameTMP)
+					} else {
+						if(!(metNameTMP%in%annotationsTentative[[j]])){
+							annotationsTentative[[j]]<-c(annotationsTentative[[j]],metNameTMP)
+						}
+					}
+				}
+			  }
+			}
+		}
+		for(j in 1:length(metabolitesTMP)){#check every metabolite that was potentially found
+			if(length(metabolitesTMP[[j]])>1){#check only metabolites where at least 2 peaks were identified			
+				#find all possible pairs - peak1-peak2, peak1-peak3, etc.
+				for(i_peak1 in 1:(length(metabolitesTMP[[j]])-1)){
+					for(i_peak2 in (i_peak1+1):length(metabolitesTMP[[j]])){
+						colnamesTMP<-metabolitesTMP[[j]][[i_peak1]]
+						rownamesTMP<-metabolitesTMP[[j]][[i_peak2]]
+						#one bin might include 2 or more peaks of the same molecule. In this case, correlations 
+						#between one bin with itself need to be excluded (R=1, p=0)
+						#remove any duplicate entries from overlapping peak areas
+						for(irownamesTMP in 1:length(rownamesTMP)){
+							if(rownamesTMP[irownamesTMP] %in% colnamesTMP){
+								irownamesTMP<-irownamesTMP[-irownamesTMP]
+							}
+						}
+						if(length(rownamesTMP)>0){
+							resultMatrixTMP<-matrix(1,ncol=length(colnamesTMP#metabolitesTMP[[j]][[i_peak1]]
+								),nrow=length(rownamesTMP#metabolitesTMP[[j]][[i_peak2]]
+								))#save p-values here
+							correlationMatrix<-matrix(0,ncol=length(colnamesTMP#metabolitesTMP[[j]][[i_peak1]]
+								),nrow=length(rownamesTMP#metabolitesTMP[[j]][[i_peak2]]
+								))#save correlation coefficients here
+							colnames(resultMatrixTMP)<-colnamesTMP#metabolitesTMP[[j]][[i_peak1]]
+							rownames(resultMatrixTMP)<-rownamesTMP#metabolitesTMP[[j]][[i_peak2]]
+							#remove potential duplicates here or later?
+							for(j_bin1 in 1:length(metabolitesTMP[[j]][[i_peak1]])){
+								#calculate correlation between baseline and peak 1, bin j_bin1
+								baselineCorr1<-stats::cor.test(mrbinObject$bins[,
+									  metabolitesTMP[[j]][[i_peak1]][j_bin1]],
+									  mrbinObject$parameters$baseline)
+								for(j_bin2 in 1:length(metabolitesTMP[[j]][[i_peak2]])){
+									#calculate correlation between baseline and peak 2
+									baselineCorr2<-stats::cor.test(mrbinObject$bins[,
+										metabolitesTMP[[j]][[i_peak2]][j_bin2]],
+										mrbinObject$parameters$baseline)
+									resultsCorTestTMP<-stats::cor.test(mrbinObject$bins[,
+									  metabolitesTMP[[j]][[i_peak1]][j_bin1]],
+									  mrbinObject$bins[,
+									  metabolitesTMP[[j]][[i_peak2]][j_bin2]])
+									resultMatrixTMP[j_bin2,j_bin1]<-resultsCorTestTMP$p.value
+									correlationMatrix[j_bin2,j_bin1]<-resultsCorTestTMP$estimate
+									#make sure the correlation is positive! 
+								}
+							}
+							#check for significance using p-value threshold
+							significantTMP<-which(resultMatrixTMP<=confirmationPthreshold&
+							    correlationMatrix>confirmationRthreshold,arr.ind=TRUE)
+							if(checkBaselineCorrelation){
+								significantTMP<-which(resultMatrixTMP<=confirmationPthreshold&
+									correlationMatrix>confirmationRthreshold&(
+									resultMatrixTMP<baselineCorr1$p.value&#p-value must be smaller than p-value of correlation to baseline
+									resultMatrixTMP<baselineCorr2$p.value)&(
+									correlationMatrix^2>baselineCorr1$estimate^2&#R must be greater than R of correlation to baseline
+									correlationMatrix^2>baselineCorr2$estimate^2),
+									arr.ind=TRUE)
+							}	
+							significantTMP2<-as.numeric(c(rownames(resultMatrixTMP)[significantTMP[,1]],
+								colnames(resultMatrixTMP)[significantTMP[,2]]))
+							for(iConfirmed in significantTMP2){
+								if(!(names(metabolitesTMP)[j]%in%annotationsConfirmed[[iConfirmed]])){
+									annotationsConfirmed[[iConfirmed]]<-c(annotationsConfirmed[[iConfirmed]],
+										names(metabolitesTMP)[j])
+								}
+							}
+						}
+					}
+				}
+			} else {
+				#single peaks marked by "?" as they cannot be confirmed by using correlation to a separate peak
+				for(jSinglePeaks in 1:length(metabolitesTMP[[j]][[1]])){
+					annotationsSinglePeaks[[ metabolitesTMP[[j]][[1]][jSinglePeaks] ]]<-c(
+						annotationsSinglePeaks[[ metabolitesTMP[[j]][[1]][jSinglePeaks] ]],names(metabolitesTMP)[j])
+				}
+			}
+		}
+		#Create a character vector of all annotations
+		#Remove all confirmed annotations from the list of tentative ids 
+		for(iannotationsConfirmed in 1:length(annotationsConfirmed)){
+			if(!is.null(annotationsConfirmed[[iannotationsConfirmed]])){
+				for(jannotationsConfirmed in annotationsConfirmed[[iannotationsConfirmed]]){
+					annotationsTentative[[iannotationsConfirmed]]<-annotationsTentative[[iannotationsConfirmed]][-
+					  which(annotationsTentative[[iannotationsConfirmed]]==jannotationsConfirmed)]
+				}
+			}
+		}
+		#Remove all single-peak annotations from the list of tentative ids 
+		for(iannotationsSinglePeaks in 1:length(annotationsSinglePeaks)){
+			if(!is.null(annotationsSinglePeaks[[iannotationsSinglePeaks]])){
+				for(jannotationsSinglePeaks in annotationsSinglePeaks[[iannotationsSinglePeaks]]){
+					annotationsTentative[[iannotationsSinglePeaks]]<-annotationsTentative[[iannotationsSinglePeaks]][-
+					  which(annotationsTentative[[iannotationsSinglePeaks]]==jannotationsSinglePeaks)]
+				}
+			}
+		}
+		annotationsTMP<-annotationsTentative
+		annotationsConfirmedTMP<-annotationsConfirmed
+		annotationsCharacter<-rep("",length(annotationsTentative))
+		#first add confirmed ids
+		for(i in 1:length(annotationsCharacter)){
+		  if(!is.null(annotationsConfirmed[[i]])){
+		    if(length(annotationsConfirmed[[i]])>0){
+				annotationsCharacter[i]<-paste(annotationsConfirmed[[i]],sep=", ",collapse=", ")
+			}
+		  }
+		  #then add single-peak ids with one question mark
+		  if(!is.null(annotationsSinglePeaks[[i]])){
+		    if(length(annotationsSinglePeaks[[i]])>0){
+				if(nchar(annotationsCharacter[i])>0){#if there is already a confirmed id for this bins, add a comma
+					annotationsCharacter[i]<-paste(annotationsCharacter[i],", ",sep="",collapse="")
+				}
+				#remove empty entries ("")
+				if(sum(annotationsSinglePeaks[[i]]=="")>0){
+					indexTMP<-which(!annotationsSinglePeaks[[i]]=="")
+				} else {
+					indexTMP<-1:length(annotationsSinglePeaks[[i]])
+				}
+				if(length(indexTMP)>0){
+					annotationsCharacter[i]<-paste(annotationsCharacter[i],
+						paste(annotationsSinglePeaks[[i]][indexTMP],"?",sep="",collapse="?, "),
+						sep="",collapse="")
+				}
+			}
+		  }
+		  #then add tentative ids with 2 question marks
+ 		  if(!hideTentativeIds){
+			if(!is.null(annotationsTentative[[i]])){
+				if(length(annotationsTentative[[i]])>0){
+					if(nchar(annotationsCharacter[i])>0){#if there is already a confirmed id for this bins, add a comma
+						annotationsCharacter[i]<-paste(annotationsCharacter[i],", ",sep="",collapse="")
+					}
+					#remove empty entries ("")
+					if(sum(annotationsTentative[[i]]=="")>0){
+						indexTMP<-which(!annotationsTentative[[i]]=="")
+					} else {
+						indexTMP<-1:length(annotationsTentative[[i]])
+					}
+					if(length(indexTMP)>0){
+						annotationsCharacter[i]<-paste(annotationsCharacter[i],
+							paste(annotationsTentative[[i]][indexTMP],"??",sep="",collapse=", "),
+							sep="",collapse="")
+					}
+				}
+			}
+		  }
+		}
+		#Remove the name extension that differentiates identically-named metabolites
+		#from the internal id file and user provided information
+		annotationsCharacter<-gsub("__internal__","",annotationsCharacter)
+		
+		annotations<-annotationsCharacter
+		if(hideChemicalShift){
+			if(sum(annotations=="")>0) annotations[annotations==""]<-colnames(mrbinObject$bins)[annotations==""]
+		} else {
+			annotations<-paste(colnames(mrbinObject$bins),annotations,sep=" ")
+		}
+		mrbinObject<-editmrbin(mrbinObject,functionName="mrbin::annotatemrbin",
+				versionNumber=as.character(utils::packageVersion("mrbin")),
+				metadata=list(annotations=trimws(annotations)),verbose=FALSE)
+		if(!is.null(additionalIdentities)){
+			message(paste("Sample type: ",additionalIdentities
+			), appendLF = TRUE)
+		}
+		confirmedTMP<-gsub("__internal__","",unique(unlist(annotationsConfirmed)))
+		if(length(confirmedTMP)>0){
+			message(paste("The following metabolites were confirmed:\n",
+				paste(confirmedTMP,sep=", ",collapse=", ")
+				), appendLF = TRUE)
+			utils::flush.console()
+		}
+	  }
   }
   invisible(mrbinObject)
 }
@@ -7682,7 +8031,7 @@ binSingleNMR<-function(currentSpectrum=NULL,dimension="1D",
 #' @param dimension Dimension
 #' @param noiseRange1d Noise range
 #' @param noiseRange2d Noise range
-#' @return An (invisible) object containing noise level
+#' @return An (invisible) object containing the noise level
 #' @keywords internal
 #' @noRd
 #' @examples
@@ -7698,6 +8047,9 @@ calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
            adjustTMP<-abs(binRegions[,2]-binRegions[,1])
            #message(adjustTMP)
          }
+		 baseline<-mean(NMRdata[
+                 which(as.numeric(names(NMRdata))<=max(noiseRange1d[1:2])&
+                      as.numeric(names(NMRdata))>=min(noiseRange1d[1:2]))])
          noise_level<-stats::sd(NMRdata[
                  which(as.numeric(names(NMRdata))<=max(noiseRange1d[1:2])&
                       as.numeric(names(NMRdata))>=min(noiseRange1d[1:2]))])
@@ -7708,6 +8060,11 @@ calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
          if(!useMeanIntensityForBins){
            adjustTMP<-abs(binRegions[,2]-binRegions[,1])*abs(binRegions[,4]-binRegions[,3])
          }
+         baseline<-mean(NMRdata[
+               which(as.numeric(rownames(NMRdata))>=min(noiseRange2d[3:4])&
+                 as.numeric(rownames(NMRdata))<=max(noiseRange2d[3:4])),
+               which(as.numeric(colnames(NMRdata))<=max(noiseRange2d[1:2])&
+                 as.numeric(colnames(NMRdata))>=min(noiseRange2d[1:2]))])
          noise_level<-stats::sd(NMRdata[
                which(as.numeric(rownames(NMRdata))>=min(noiseRange2d[3:4])&
                  as.numeric(rownames(NMRdata))<=max(noiseRange2d[3:4])),
@@ -7724,7 +8081,8 @@ calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
        noise_level_TMP[is.nan(noise_level_TMP)]<-median(noise_level_TMP,na.rm=TRUE)#Inf
     }
     invisible(list(noise_level=noise_level,#noise level per sample before reference scaling
-      noise_level_TMP=noise_level_TMP))#noise level per bin and sample before reference scaling
+      noise_level_TMP=noise_level_TMP,#noise level per bin and sample before reference scaling
+	  baseline=baseline))#baseline level in noise area
  }
 }
 
@@ -7738,6 +8096,7 @@ calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
 #' @param region A vector defining the plot region (left, right, top, bottom) or "all" for the whole spectrum
 #' @param rectangleRegions A 4-column matrix defining areas where to plot rectangles
 #' @param rectangleColors Define colors for the rectangles
+#' @param density Shading lines for the rectangles
 #' @param rectangleFront Plot rectangles in front of spectrum rather than in background (only 2D)
 #' @param polygonRegion Defines 4 corners of a polygon to be plotted
 #' @param maxPlots The maximum number of 2D plots to be overlaid
@@ -7750,6 +8109,7 @@ calculateNoise<-function(NMRdata=NULL,pointsPerBin=NULL,dimension="1D",
 #' @param restrictToRange Restrict plot area to range of available data points. Defaults to FALSE
 #' @param correctOffset2D Do a basic offset correction so 2D spectra have a baseline close to 0. Defaults to TRUE
 #' @param renewSpectrum Should a new size-reduced spectrum for quicker plotting be calculated, or can the old one be used? Default: TRUE
+#' @param cex.axis Font size of axis tick labels.
 #' @param setContours Should upper and lower contour levels be calculated of the old ones be reused? Default: TRUE
 #' @param enableSplit Allow split plots for showing 1D and 2D spectra simultaneously
 #' @param dimension If not provided, this will be taken from package environment
@@ -7771,6 +8131,8 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
                    rectangleColors=c("darkseagreen3"#"green3"
 				     ,"orange","blue","red","yellow",
                      "gray","purple"),
+				   density=NULL,
+				   cex.axis=.7,
                    rectangleFront=FALSE,correctOffset2D=TRUE,
                    polygonRegion=NULL,maxPlots=Inf,setContours=TRUE,
                    color=NULL,add=FALSE,showGrid=FALSE,buffer=TRUE,
@@ -7798,15 +8160,27 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
    devAskNewPage(ask = FALSE)
   }
   #
+  splitEnabled<-FALSE
   if(enableSplit){
-    if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)) TMP1D<-TRUE
+    if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)){ 
+	  TMP1D<-TRUE
+	} else {
+	  if(!plotCurrent) TMP2D<-FALSE
+	}
     if(!is.null(mrbin.env$mrbinTMP$additionalPlots2D)){
     	TMP2D<-TRUE
 		#Count2D<-Count2D+length(mrbin.env$mrbinTMP$additionalPlots2D)
-    }
+    } else {
+	  if(!plotCurrent) TMP2D<-FALSE
+	}
 	if(TMP1D&TMP2D){
-      graphics::par(mfrow=c(2,1),mar=c(2.3, 2.1, 0.5, 0.8))#bottom, left, top, and right
-    }
+      graphics::par(mfrow=c(2,1),mar=c(0.3, 1.1, 1.5, 0.5))#bottom, left, top, and right
+      splitEnabled<-TRUE
+	} else {
+      graphics::par(mar=c(1.3, 1.1, 2.5, 0.5))#bottom, left, top, and right
+	}
+  } else {
+      graphics::par(mar=c(1.3, 1.1, 2.5, 0.5))#bottom, left, top, and right
   }
   if(TMP2D){
     counterTMP<-0
@@ -7849,6 +8223,7 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
 		mrbin.env$mrbinplot$highestContour<-max(currentSpectrumOriginal)*.9999
 		plotNMR(region=region,rectangleRegions=rectangleRegions,
                    rectangleColors=rectangleColors,
+				   density=density,
                    rectangleFront=rectangleFront,
                    polygonRegion=polygonRegion,
                    color=colorTMP,add=add,showGrid=showGrid,
@@ -7856,7 +8231,7 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
                    restrictToRange=restrictToRange,dimension=dimension,
 				   #spectrumTMP=mrbin.env$mrbinTMP$additionalPlotsTMP2D,
 				   plotDelay=0,lwd=lwd,background=background,title=titles[1],
-				   titleCounter=1,...)
+				   titleCounter=1,cex.axis=cex.axis,...)
       if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
         counterTMP<-counterTMP+1
       }
@@ -7903,8 +8278,10 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
 			colorTMP=color[1]
 		    }
 		  }
-          mrbin.env$mrbinTMP$additionalPlotsTMP2D[[iTMP]]<-plotNMR(region=region,rectangleRegions=NULL,
+          mrbin.env$mrbinTMP$additionalPlotsTMP2D[[iTMP]]<-plotNMR(region=region,
+		               rectangleRegions=rectangleRegions,#NULL,
                        rectangleColors=rectangleColors,
+					   density=density,
                        rectangleFront=FALSE,
                        polygonRegion=polygonRegion,
                        color=colorTMP,add=add,showGrid=FALSE,
@@ -7917,7 +8294,7 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
                        mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,7])+as.numeric(
                        mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,9]),dimension="2D",
 					   plotDelay=0,lwd=lwd,background=background,title=titles[1],
-					   titleCounter=1,...)
+					   titleCounter=1,cex.axis=cex.axis,...)
           counterTMP<-counterTMP+1
         } else {
 		  if(is.null(color)){
@@ -7929,8 +8306,10 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
 		     colorTMP=color[iTMP+1]
 		   }
 		  }
-          mrbin.env$mrbinTMP$additionalPlotsTMP2D[[iTMP]]<-plotNMR(region=region,rectangleRegions=NULL,
+          mrbin.env$mrbinTMP$additionalPlotsTMP2D[[iTMP]]<-plotNMR(region=region,
+		               rectangleRegions=NULL,
                        rectangleColors=rectangleColors,
+					   density=density,
                        rectangleFront=FALSE,
                        polygonRegion=polygonRegion,
                        color=colorTMP,
@@ -7943,7 +8322,7 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
                        mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,7])+as.numeric(
                        mrbin.env$mrbinTMP$additionalPlots2DMetadata[iTMP,9]),dimension="2D",
 					   plotDelay=0,lwd=lwd,background=background,title=titles[counterTMP+1],
-					   titleCounter=counterTMP+1,...)
+					   titleCounter=counterTMP+1,cex.axis=cex.axis,...)
           counterTMP<-counterTMP+1
         }
       }
@@ -7951,17 +8330,22 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
   }
   if(TMP1D){
     counterTMP<-0
+	if(splitEnabled){
+		plotTitle<-""
+	    graphics::par(mar=c(1.3, 1.1, 1, 0.5))#bottom, left, top, and right
+	}
     #if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
 	if(plotCurrent){
       plotNMR(region=region,rectangleRegions=rectangleRegions,
                    rectangleColors=rectangleColors,
+				   density=density,
                    rectangleFront=rectangleFront,
                    polygonRegion=polygonRegion,
                    color=color,add=add,showGrid=showGrid,
                    manualScale=manualScale,plotTitle=plotTitle,
                    restrictToRange=restrictToRange,dimension=dimension,
 				   plotDelay=0,lwd=lwd,background=background,title=titles[1],
-				   titleCounter=1,...)
+				   titleCounter=1,cex.axis=cex.axis,...)
       if(!is.null(mrbin.env$mrbinTMP$currentSpectrumOriginal)){
         counterTMP<-counterTMP+1
       }
@@ -7969,8 +8353,10 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
     if(!is.null(mrbin.env$mrbinTMP$additionalPlots1D)){
       for(iTMP in 1:length(mrbin.env$mrbinTMP$additionalPlots1D)){
         if(counterTMP==0){
-          mrbin.env$mrbinTMP$additionalPlotsTMP1D[[iTMP]]<-plotNMR(region=region,rectangleRegions=NULL,
+          mrbin.env$mrbinTMP$additionalPlotsTMP1D[[iTMP]]<-plotNMR(region=region,
+		               rectangleRegions=rectangleRegions,#NULL,
                        rectangleColors=rectangleColors,
+					   density=density,
                        rectangleFront=FALSE,
                        polygonRegion=polygonRegion,
                        color=mrbin.env$mrbinTMP$additionalPlots1DMetadata[1,8],add=add,showGrid=FALSE,
@@ -7983,11 +8369,12 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
                        mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,7])+as.numeric(
                        mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,9]),dimension="1D",
 					   plotDelay=0,lwd=lwd,background=background,title=titles[1],
-					   titleCounter=1,...)
+					   titleCounter=1,cex.axis=cex.axis,...)
           counterTMP<-counterTMP+1
         } else {
           mrbin.env$mrbinTMP$additionalPlotsTMP1D[[iTMP]]<-plotNMR(region=region,rectangleRegions=NULL,
                        rectangleColors=rectangleColors,
+					   density=density,
                        rectangleFront=FALSE,
                        polygonRegion=polygonRegion,
                        color=mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,8],
@@ -8001,7 +8388,7 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
                        mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,7])+as.numeric(
                        mrbin.env$mrbinTMP$additionalPlots1DMetadata[iTMP,9]),dimension="1D",
 					   plotDelay=0,lwd=lwd,background=background,title=titles[counterTMP+1],
-					   titleCounter=counterTMP+1,...)
+					   titleCounter=counterTMP+1,cex.axis=cex.axis,...)
           counterTMP<-counterTMP+1
         }
       }
@@ -8035,26 +8422,87 @@ plotMultiNMR<-function(region=NULL,rectangleRegions=NULL,
 #' @param showNames Display list of spectrum titles in plot, defaults to "Spectrum titles". Other options are "" and "Folder names"
 #' @param highlight A vector of up to 2 frequencies that will be highlighted in the plot. If 2 values are provided the distance in Hz is shown as well. Defaults to NULL.
 #' @param graphics Controls whether pop-up windows are shown for selections. Defaults to TRUE.
+#' @param binlist Optional: A vector containing bin names as they are generated by mrbin. These bins will be marked by rectangles in the plot. This could be useful for metabolite identification when having a list of significantly changing signals. Default is NULL.
+#' @param annotate Should peak annotation regions be shown? 
+#' @param metaboliteIdentities Optional: A file path or 4-column matrix where each row belongs to one unique metabolite signal (left, right, top, bottom borders). Row names are metabolite names. For a file, this needs to be the file path for a .csv file containing such a matrix, the first columns containing metabolite names and the first row being a header. Each row belongs to one unique metabolite signal (left, right, top, bottom borders). Row names are metabolite names. 
 #' @param ... Additional graphical parameters that will be passed to the functions plot, lines, and/or contour 
 #' @return {None}
 #' @export
 #' @examples
 #' resetEnv()
+#' metaboliteIdentities=matrix(c(1.346,1.324,21,23,
+#'                               4.12,4.1,70.8578,71.653,
+#'                               3.052,3.043,30.5,33.5,
+#'                               4.066,4.059,57,59.5,
+#'                               2.582,2.479,46,49,
+#'                               2.737,2.634,46,49),
+#'                    ncol=4,byrow=TRUE)
+#' rownames(metaboliteIdentities)=c("Lactate","Lactate","Creatinine","Creatinine","Citrate","Citrate")
 #' mrplot(folders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
 #'                  system.file("extdata/1/10/pdata/10",package="mrbin"),
 #'                  system.file("extdata/2/10/pdata/10",package="mrbin"),
 #'                  system.file("extdata/3/10/pdata/10",package="mrbin")),
-#'        dimensions=c("2D","1D","1D","1D"),zoom=c(2.8,2.4,20,55),
+#'        dimensions=c("2D","1D","1D","1D"),zoom=c(2.8,2.4,20,60),
 #'        highlight=c(2.564,2.537),
-#'        intensity1D=32,hideMenu=TRUE)
+#'        binlist=c("2.725,2.675","2.575,2.525"),
+#'        annotate=TRUE,metaboliteIdentities=metaboliteIdentities,
+#'        plotTitle="Significant Bins",intensity1D=24,hideMenu=TRUE)
 
 mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
   zoom=NULL,color=NULL,background=NULL,lwd=1,plotTitle="",showNames="Spectrum titles",
-  graphics= TRUE,highlight=NULL,...){
+  graphics= TRUE,highlight=NULL,
+  binlist=NULL,annotate=NULL,metaboliteIdentities=NULL,...){
   mrbin.env$mrbinTMP$currentSpectrumOriginal<-NULL
   region<-NULL
   commandHistory<-NULL
   setContours<-TRUE
+  if(plotTitle==""){
+    if(!is.null(mrbin.env$mrbinTMP$plotTitle)){
+      plotTitle<-mrbin.env$mrbinTMP$plotTitle
+	}
+  } else {
+    mrbin.env$mrbinTMP$plotTitle<-plotTitle
+  }
+  if(is.null(annotate)){
+    annotate<-mrbin.env$mrbinTMP$annotate
+  } else {
+    mrbin.env$mrbinTMP$annotate<-annotate
+  }
+  if(is.null(annotate)) annotate<-FALSE
+  if(is.character(annotate)){ 
+	  annotateTMP<-TRUE
+	 additionalIdentities<-annotate
+  } else {
+	  annotateTMP<-annotate
+	  additionalIdentities<-NULL
+  }
+  if(is.null(metaboliteIdentities)){
+    metaboliteIdentities<-mrbin.env$mrbinTMP$metaboliteIdentities
+  } else {
+	if(is.character(metaboliteIdentities)){#load from .csv file
+	  filepathTMP<-metaboliteIdentities
+	  metaboliteIdentitiesTMP<-utils::read.csv(filepathTMP,
+		  header=TRUE)#,colClasses=c("character",rep("numeric",4)))	
+	  metaboliteIdentities<-as.matrix(metaboliteIdentitiesTMP[2:5])
+	  rownames(metaboliteIdentities)<-metaboliteIdentitiesTMP[,1] 
+	  #metaboliteIdentities<-metaboliteIdentities[,-1]	
+	}
+    mrbin.env$mrbinTMP$metaboliteIdentities<-metaboliteIdentities
+  }
+  if(is.null(additionalIdentities)){
+    additionalIdentities<-mrbin.env$mrbinTMP$additionalIdentities
+  } else {
+    mrbin.env$mrbinTMP$additionalIdentities<-additionalIdentities
+  }
+  if(!is.null(additionalIdentities)){#read predefined metabolite ids from file and add them
+	    additionalIdentitiesTMP<-utils::read.csv(system.file(paste("extdata/data/",additionalIdentities,".csv",sep=""),
+		  package="mrbin"),header=TRUE)#,colClasses=c("character",rep("numeric",4)))
+		additionalIdentitiesTMP2<-as.matrix(additionalIdentitiesTMP[,2:5])
+		rownames(additionalIdentitiesTMP2)<-additionalIdentitiesTMP[,1]  
+	    #if(questionmarks) 
+		rownames(additionalIdentitiesTMP2)<-paste(rownames(additionalIdentitiesTMP2),"?",sep="")
+		metaboliteIdentities<-rbind(metaboliteIdentities,additionalIdentitiesTMP2)
+  }
   #renewSpectrum<-TRUE
   if(!is.null(zoom)){
     zoom(zoom[1],zoom[2],zoom[3],zoom[4],refreshPlot=FALSE)
@@ -8064,33 +8512,21 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
   }
   distanceTMP<-NULL
   polygonRegion<-NULL
-  #rectangleRegions<-NULL
   if(!is.null(intensity1D)) intMin(value=intensity1D,refreshPlot=FALSE)
   dotdotdot=list(...)
   if(!is.null(folders)){
     if(is.null(zoom)) region<-"all"
     if(length(dimensions)<length(folders)) dimensions<-rep(dimensions[1],length(folders))
-    setParam(parameters=list(NMRfolders=folders,dimension=dimensions[1]))
-    #addToPlot(folder=mrbin.env$mrbin$parameters$NMRfolders[1]
-	#	  ,dimension=dimensions[1]
-	#	  ,add=FALSE)
-    #if(length(folders)>1){
-      for(iTMP in 1:length(folders)){
-         addToPlot(folder=mrbin.env$mrbin$parameters$NMRfolders[iTMP]
-		  ,dimension=dimensions[iTMP],add=TRUE,omitCurrent=TRUE)
-      }
-    #}
+    mrbin.env$mrbinTMP$additionalPlots1D<-NULL
+	mrbin.env$mrbinTMP$additionalPlots2D<-NULL
+    mrbin.env$mrbinTMP$additionalPlots1DMetadata<-NULL
+	mrbin.env$mrbinTMP$additionalPlots2DMetadata<-NULL
+	setParam(parameters=list(NMRfolders=folders,dimension=dimensions[1]))
+    for(iTMP in 1:length(folders)){
+		addToPlot(folder=mrbin.env$mrbin$parameters$NMRfolders[iTMP]
+		,dimension=dimensions[iTMP],add=TRUE,omitCurrent=TRUE)
+    }
   }
-  #
-  #if(!is.null(folders)) setParam(parameters=list(NMRfolders=folders,dimension=dimensions[1]))
-  #if(length(mrbin.env$mrbin$parameters$NMRfolders)>0){
-  #	  for(iFolders in 1:length(mrbin.env$mrbin$parameters$NMRfolders)){
-  #		addToPlot(folder=mrbin.env$mrbin$parameters$NMRfolders[iFolders]
-  #		  ,dimension=mrbin.env$mrbin$parameters$dimension
-  #		  )
-  #	  }
-  #	  region<-"all"
-  #}
     stopTMP<-FALSE
     menuItemAdd<-"Add or remove spectra..."
     menuItemZoomAll<-"Show whole spectrum"
@@ -8102,29 +8538,56 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
 	menuItemColors<-"Preferences..."
     currentItem<-menuItemAdd
 	renewSpectrumTMP<-2
+	if(is.null(binlist)&!is.null(mrbin.env$mrbinTMP$binlist)){
+	  binlist<-mrbin.env$mrbinTMP$binlist
+	}
 	if(is.null(highlight)&!is.null(mrbin.env$mrbinTMP$highlight)){
 	  highlight<-mrbin.env$mrbinTMP$highlight
 	}
     while(!stopTMP){
+	  rectangleRegions<-NULL
+	  rectangleColors<-NULL
+	  density<-NULL
+	  if(!is.null(binlist)){
+	    mrbin.env$mrbinTMP$binlist<-binlist
+		for(iBinlist in 1:length(binlist)){
+		 #example: "9.37,9.36" or "7.9,7.8,130,135"
+		 bordersTMP<-as.numeric(strsplit(binlist[iBinlist],",")[[1]])
+		 if(length(bordersTMP)==4){#2D
+		   rectangleRegions<-rbind(rectangleRegions,bordersTMP)
+		 }
+		 if(length(bordersTMP)==2){#1D
+		   rectangleRegions<-rbind(rectangleRegions,c(bordersTMP,NA,NA))
+		 }
+		}
+		rownames(rectangleRegions)<-rep("",nrow(rectangleRegions))
+		rectangleColors<-c(rectangleColors,rep("darkseagreen3",length(binlist)))
+		density<-rep(-1,nrow(rectangleRegions))
+	  }
+	  rectangleRegionsTMP<-rectangleRegions
+      if(annotateTMP){
+	     rectangleRegionsTMP<-rbind(rectangleRegionsTMP,metaboliteIdentities)
+	     rectangleColors<-c(rectangleColors,rep("red",nrow(metaboliteIdentities)))
+		 density<-c(density,rep(14,nrow(metaboliteIdentities)))
+	  }
 	  mrbin.env$mrbinTMP$highlight<-highlight
-	  polygonRegion<-NULL
 	  if(!is.null(highlight)){
 	   if(length(highlight)>2) highlight<-highlight[1:2]
-	   highlightTMP<-rep(highlight[1],2*length(highlight))
-	   highlightTMP[(1:length(highlight))*2]<-highlight
-	   highlightTMP[(1:length(highlight))*2-1]<-highlight
-	   polygonRegion<-cbind(c(-10^20,10^20,10^20,-10^20)[1:(min(4,length(highlightTMP)))],highlightTMP)
-	   #rectangleRegions<-cbind(highlight,highlight,-100,200)#does not work as rect only plots within close to current plot range
-	   colnames(polygonRegion)<-1:ncol(polygonRegion)
-	   colnames(polygonRegion)[1]<-""
+	   rectangleRegionsTMP<-rbind(rectangleRegionsTMP,
+	     cbind(highlight,highlight,NA,NA)
+		 )
+	   colnames(rectangleRegionsTMP)<-1:ncol(rectangleRegionsTMP)
+	   colnames(rectangleRegionsTMP)[1]<-""
+	   rectangleColors<-c(rectangleColors,rep("gray28",length(highlight)))
+	   density<-c(density,rep(-1,length(highlight)))
 	   if(length(highlight)>1) {
 		   if(!is.null(mrbin.env$mrbinTMP$additionalPlots1DMetadata)){
 			 BF1TMP<-as.numeric(mrbin.env$mrbinTMP$additionalPlots1DMetadata[1,11])
 		   } else {
 			 BF1TMP<-as.numeric(mrbin.env$mrbinTMP$additionalPlots2DMetadata[1,11])
 		   }
-			distanceTMP<-round(abs(as.numeric(highlight[1])-as.numeric(highlight[2]))*BF1TMP,2)
-			colnames(polygonRegion)[1]<-paste(distanceTMP,"Hz")
+			distanceTMP<-round(abs(as.numeric(highlight[1])-as.numeric(highlight[2]))*BF1TMP,1)
+			colnames(rectangleRegionsTMP)[1]<-paste(distanceTMP,"Hz",sep="")
 	   }
 	  }
 	  if(renewSpectrumTMP<2){
@@ -8163,11 +8626,16 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
 		   )
 		}
 	  }
-	  do.call(plotMultiNMR,append(list(background=background,plotTitle=plotTitle,dimension=dimensions,
-	    lwd=lwd,color=color,region=region,title=titles,manualScale=TRUE,plotCurrent=FALSE,
-		renewSpectrum=renewSpectrum,setContours=setContours,#rectangleRegions=rectangleRegions,
-		polygonRegion=polygonRegion,rectangleColors=NA,
-		cex.lab=.8, cex.axis=.8),
+	  do.call(plotMultiNMR,append(list(background=background,plotTitle=plotTitle,
+	    #dimension=dimensions,
+	    lwd=lwd,color=color,region=region,title=titles,manualScale=TRUE,
+		plotCurrent=FALSE,
+		renewSpectrum=renewSpectrum,setContours=setContours,
+		rectangleRegions=rectangleRegionsTMP,
+		#polygonRegion=polygonRegion,
+		rectangleColors=rectangleColors,#"darkseagreen3",#NA,
+		density=density,
+		cex.lab=.8, cex.axis=.7),
         dotdotdot))#plotMultiNMR(background=background)
 	  #renewSpectrumTMP<-0
 	  region<-NULL
@@ -8190,6 +8658,8 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
           "Lower lowest contour (2D)",
 		  "Highlight peaks...",
           "Set offset and scale of selected spectra...",
+		  "Add a list of bin names for highlighting...",
+		  "Plot title",
           menuItemColors
           )
       #if not 2D: remove up and down
@@ -8221,9 +8691,34 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
       } else {
         currentItem<-menuItem
       }
+	  if(menuItem=="Plot title"){
+		menuItem4<-readline(prompt=paste("Enter title, press enter to keep current title: ",sep=""))
+		if(!menuItem4==""){
+			plotTitle<-menuItem4
+			mrbin.env$mrbinTMP$plotTitle<-plotTitle
+		}
+	  }
+	  if(menuItem=="Add a list of bin names for highlighting..."){
+				menuItem3<-utils::select.list(c(menuItem3,
+                       "Add a new bin list","Remove current list"),
+                       preselect="Add a new bin list",
+                       title ="Please select",graphics=graphics)
+		if(!menuItem3==""){
+		  if(menuItem3=="Add a new bin list"){
+			  menuItem4<-readline(prompt=paste("Paste bin names separated by space, e.g.: \"2.70,2.69\" \"2.57,2.56\" \nor press enter to cancel: ",sep=""))
+			  if(!menuItem4==""){
+	            #example: "9.37,9.36" or "7.9,7.8,130,135"
+				binlistTMP<-gsub("\"","",strsplit(menuItem4,split=" ")[[1]])
+				if(length(binlistTMP)>0)    binlist<-binlistTMP
+			  }
+		  }
+		  if(menuItem3=="Remove current list"){
+		    binlist<-NULL
+		  }
+		}
+	  }
 	  if(menuItem=="Highlight peaks..."){
 	    menuItem3<-"Add a new highlight"
-
 	    if(!is.null(highlight)){
 		  if(length(highlight)>=2) menuItem3<-NULL
 				menuItem3<-utils::select.list(c(menuItem3,
@@ -8623,4 +9118,102 @@ mrplot<-function(hideMenu=FALSE,folders=NULL,dimensions=NULL,intensity1D=NULL,
 	  #  dotdotdot))
       #utils::flush.console()
     }
+}
+
+#' A function for plotting heatmaps.
+#'
+#' This function plots heatmaps based on rank order, using heatmap from the stats package
+#' @param results Either an mrbin object or a numeric matrix containing sample names as rownames and feature names as columns names.
+#' @param binlist A vector containing bin names as they are generated by mrbin (colnames). If provided, only these columns will be shown.
+#' @param samplelist A vector containing sample names (rownames). If provided, only these rows will be shown.
+#' @param annotate Should peak annotations be shown? This requires annotation data in the mrbin object.
+#' @param Colv Determines if and how the column dendrogram should be computed and reordered. Default: NA (dendrogram will not be used)
+#' @param Rowv Determines if and how the row dendrogram should be computed and reordered. Default: NULL (dendrogram will be used)
+#' @param margins Determines the plot margins.
+#' @param cexRow Font size for row labels
+#' @param cexCol Font size for column labels
+#' @param closeDevice Should previous plots be closed prior to plotting?
+#' @param ... Additional graphical parameters that will be passed to the stats function heatmap 
+#' @return {None}
+#' @export
+#' @examples
+#' resetEnv()
+#' # First create NMR bin data, then plot some differential bins.
+#' results<-mrbin(silent=TRUE,setDefault=TRUE,parameters=list(verbose=FALSE,
+#'                 dimension="1D",binwidth1D=0.01,PCA="No",showSpectrumPreview="No",
+#'                 signal_to_noise1D=25,noiseThreshold=0.75,useAsNames="Spectrum titles",
+#'                 NMRfolders=c(
+#'                 system.file("extdata/1/10/pdata/10",package="mrbin"),
+#'                 system.file("extdata/2/10/pdata/10",package="mrbin"),
+#'                 system.file("extdata/3/10/pdata/10",package="mrbin"))
+#'                 ))
+#' metadata<-c(0,0,1)
+#' #Find significant signals
+#' pvalues<-rep(NA,ncol(results$bins))
+#' names(pvalues)<-colnames(results$bins)
+#' for(i in 1:ncol(results$bins)){
+#' 	model<-stats::lm(intensity~treatment, 
+#'      data=data.frame(intensity=results$bins[,i],treatment=metadata))
+#' 	pvalues[i]<-stats::anova(model)$"Pr(>F)"[1]
+#' }
+#' significantBins<-names(sort(pvalues)[1:30]) 
+#' metaboliteIdentities=matrix(c(1.346,1.324,21,23,
+#'                               4.12,4.1,70.8578,71.653,
+#'                               3.052,3.043,30.5,33.5,
+#'                               4.066,4.059,57,59.5,
+#'                               5.7,6.0,0,150),
+#'                    ncol=4,byrow=TRUE)
+#' #Annotate the dataset with signal identities
+#' rownames(metaboliteIdentities)=c("Lactate","Lactate","Creatinine","Creatinine","Urea")
+#' results<-annotatemrbin(results,metaboliteIdentities=metaboliteIdentities)
+#' mrheatmap(results=results,
+#'     binlist=significantBins,annotate=TRUE,
+#'     main="Significant signals")
+
+mrheatmap<-function(results,binlist=NULL,samplelist=NULL,annotate=FALSE,
+    cexRow=0.7,cexCol=.8, margins=c(4,6),Colv=NA,Rowv=NULL,closeDevice=TRUE,...){
+	if(is.matrix(results)){
+    	binsTMP<-results
+	} else {
+		binsTMP<-results$bins
+	}
+	if(!is.null(binlist)){
+		#uniquebinlistIndices<-which(colnames(binlist)==unique(binlist))
+		binsTMP<-binsTMP[,unique(binlist)]
+	} else {
+		#uniquebinlistIndices<-1:ncol(binsTMP)
+	}
+	if(!is.null(samplelist)) binsTMP<-binsTMP[samplelist,]
+	binsTMP<-apply(binsTMP,2,rank)
+	#if(is.character(annotate)){ 
+	#  annotateTMP<-TRUE
+	#} else {
+	#  annotateTMP<-annotate
+	#}
+	if(annotate){#annotateTMP){
+		if(!is.matrix(results)){
+			if(length(results$metadata$annotations)==ncol(results$bins)){
+				binNamesOriginal<-results$metadata$annotations
+				names(binNamesOriginal)<-colnames(results$bins)
+				#annotatedBins<-which(!binNamesOriginal==results$metadata$annotations)
+				#binNamesOriginal[annotatedBins]<-
+				#  paste(binNamesOriginal[annotatedBins],
+				#    results$metadata$annotations[annotatedBins])
+				colnames(binsTMP)<-binNamesOriginal[colnames(binsTMP)]#results$metadata$annotations#[uniquebinlistIndices]#binNamesOriginal[colnames(binsTMP)]
+			}
+		}
+	}
+	devAskNewPage(ask = FALSE)
+	if(closeDevice){
+	  try(dev.off(),silent=TRUE)
+	  devAskNewPage(ask = FALSE)
+	}
+	#par(mar=c(0,0,0,0),oma=c(0,0,0,0))
+    heatmap(t(binsTMP),cexRow=cexRow,cexCol=cexCol,
+        margins=margins,
+		Colv=Colv,Rowv=Rowv,
+        scale="row",col=c("#0000FF","#0000DF","#0000BF","#00009F","#000080","#000060","#000040",
+		"#000020","#000000","#202000","#404000","#606000","#808000","#9F9F00","#BFBF00",
+		"#DFDF00","#FFFF00"),
+		...)
 }

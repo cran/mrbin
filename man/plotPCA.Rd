@@ -38,6 +38,7 @@ results<-mrbin(silent=TRUE,setDefault=FALSE,parameters=list(dimension="2D",
     PQNScaling="No",noiseRemoval="Yes",trimZeros="Yes",tryParallel=TRUE,
     fixNegatives="No",logTrafo="No",PCA="No",signal_to_noise2D=10,
     NMRfolders=c(system.file("extdata/1/12/pdata/10",package="mrbin"),
-                 system.file("extdata/2/12/pdata/10",package="mrbin"))))
+                 system.file("extdata/2/12/pdata/10",package="mrbin"),
+                 system.file("extdata/3/12/pdata/10",package="mrbin"))))
 plotPCA(results)
 }

@@ -4,16 +4,24 @@
 \alias{editmetabolitesmrbin}
 \title{A function for editing metabolite identities.}
 \usage{
-editmetabolitesmrbin(mrbinObject, borders, metabolitenames, add = TRUE)
+editmetabolitesmrbin(
+  mrbinObject,
+  borders = NULL,
+  metabolitenames = NULL,
+  add = FALSE,
+  ids = NULL
+)
 }
 \arguments{
 \item{mrbinObject}{An mrbin object}
 
-\item{borders}{A matrix of signal borders. 1D: two columns: left, right 2D: four columns: left, right, top, bottom}
+\item{borders}{A matrix of signal borders. 1D: two columns: left, right. 2D: four columns: left, right, top, bottom}
 
 \item{metabolitenames}{A character vector of metabolite identities}
 
 \item{add}{Should the new metabolite list be added to an existing list, or replace the current list?}
+
+\item{ids}{A matrix of potential metabolite identities. This has to be a 4-column matrix with columns indicating left, right, top, bottom. Rownames are metabolite names. If this matrix is not provided, borders and metabolitenames have to be provided.}
 }
 \value{
 An (invisible) mrbin object
@@ -32,9 +40,11 @@ This function edits the metabolite list within an mrbin object and returns it
                    ))
  results<-editmetabolitesmrbin(results,borders=matrix(c(
      1.346,1.324,
+     4.12,4.1,
      3.052,3.043,
      4.066,4.059
    ),ncol=2,byrow=TRUE),metabolitenames=c(
+   "Lactate",
    "Lactate",
    "Creatinine",
    "Creatinine"
